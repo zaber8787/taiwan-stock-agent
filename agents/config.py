@@ -1,20 +1,92 @@
 # File: agents/config.py
 
-'''Configuration helpers for agents & tools.'''
+'''Configuration helpers for agents & tools (loads settings from .env).'''
 from __future__ import annotations
+import os
 import functools
 from pathlib import Path
 from typing import Any
-import yaml
+
+try:
+    import yaml
+    HAS_YAML = True
+except ImportError:
+    HAS_YAML = False
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 _HERE = Path(__file__).resolve().parent
 _CFG_DIR = _HERE.parent / 'config'
-_DEFAULT_LLM: dict[str, Any] = {
-    'model': 'qwen2.5:7b',
-    'base_url': 'http://ollama:11434/v1',
-    'temperature': 0.3,
-    'max_tokens': 2000
-}
+
+def get_env_str(key: str, default: str) -> str:
+    return os.getenv(key, default) or default
+
+def get_env_float(key: str, default: float) -> float:
+    try:
+        val = os.getenv(key)
+        return float(val) if val is not None else default
+    except (ValueError, TypeError):
+        return default
+
+def get_env_int(key: str, default: int) -> int:
+    try:
+        val = os.getenv(key)
+        return int(val) if val is not None else default
+    except (ValueError, TypeError):
+        return default
+
+
+def load_llm_cfg(path: Path | str | None = None) -> dict[str, Any]:
+    '''Load default LLM configuration combining .env variables and optional YAML file.'''
+    cfg_path = Path(path) if path else _CFG_DIR / 'llm.yaml'
+    out = {
+        'model': get_env_str('LLM_MODEL', 'qwen2.5:7b'),
+        'base_url': get_env_str('LLM_BASE_URL', 'http://localhost:11434/v1'),
+        'temperature': get_env_float('LLM_TEMPERATURE', 0.3),
+        'max_tokens': get_env_int('LLM_MAX_TOKENS', 2000)
+    }
+    if HAS_YAML and cfg_path.exists():
+        with open(cfg_path, 'r', encoding='utf-8') as fh:
+            data = yaml.safe_load(fh)
+            if isinstance(data, dict):
+                out.update(data)
+    return out
+
+
+def get_llm_model_for_agent(agent_name: str | None = None) -> str:
+    '''Resolve the target LLM model string for a given agent.'''
+    if agent_name:
+        env_key = f"{agent_name.upper().replace('-', '_')}_MODEL"
+        override = os.getenv(env_key)
+        if override:
+            return override
+    return get_env_str('LLM_MODEL', 'qwen2.5:7b')
+
+
+def llm_for_crewai(agent_name: str | None = None) -> Any:
+    '''Return LLM configuration or object suitable for CrewAI Agent.'''
+    model_name = get_llm_model_for_agent(agent_name)
+    base_cfg = load_llm_cfg()
+    
+    # Try importing CrewAI LLM wrapper if available
+    try:
+        from crewai import LLM
+        api_key = os.getenv('OPENAI_API_KEY') or os.getenv('LLM_API_KEY') or 'NA'
+        base_url = base_cfg.get('base_url')
+        return LLM(
+            model=model_name,
+            base_url=base_url,
+            temperature=base_cfg.get('temperature', 0.3),
+            api_key=api_key
+        )
+    except Exception:
+        # Fallback to string representation for CrewAI or custom runner
+        return model_name
+
 
 try:
     from crewai import Tool
@@ -27,36 +99,6 @@ except ImportError:
             self.name = name
             self.func = func
             self.description = description
-
-
-def load_llm_cfg(path: Path | str | None = None) -> dict[str, Any]:
-    cfg_path = Path(path) if path else _CFG_DIR / 'llm.yaml'
-    out = dict(_DEFAULT_LLM)
-    if cfg_path.exists():
-        with open(cfg_path, 'r', encoding='utf-8') as fh:
-            data = yaml.safe_load(fh)
-            if isinstance(data, dict):
-                out.update(data)
-    return out
-
-
-def merge_agent_llm(agent_name: str, cfg: dict[str, Any] | None = None) -> dict[str, Any]:
-    merged = load_llm_cfg()
-    if cfg and isinstance(cfg, dict):
-        agents_cfg = cfg.get('agents', {})
-        if agent_name in agents_cfg:
-            merged.update(agents_cfg[agent_name])
-    return merged
-
-
-def llm_for_crewai() -> dict[str, Any]:
-    base_cfg = load_llm_cfg()
-    return {
-        'model': base_cfg.get('model', 'qwen2.5:7b'),
-        'temperature': base_cfg.get('temperature', 0.3),
-        'max_tokens': base_cfg.get('max_tokens', 2000),
-        'base_url': base_cfg.get('base_url', 'http://ollama:11434/v1')
-    }
 
 
 def tools_for_category(cat: str = 'research') -> list[Tool]:

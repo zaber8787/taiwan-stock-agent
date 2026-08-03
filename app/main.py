@@ -6,11 +6,8 @@ main.py — Taiwan Stock Analysis System entry point.
 Usage examples:
 
     python -m app.main crawl 2330.TW           # only crawl raw data (no agent loop)
-    python -m app.main run 2330.TW             # start the full analysis pipeline
-
-The script parses CLI args, wires in the crawler modules (twse, yfinance, anue),
-collects data for the requested ticker, and then optionally runs a CrewAI multi-agent
-research loop if CrewAI is installed locally.
+    python -m app.main run 2330.TW             # start the full agent loop & paper trading
+    python -m app.main gui                     # launch the Web GUI Dashboard & API Server
 
 Graceful shutdown on SIGINT / SIGTERM is supported.
 '''
@@ -23,6 +20,14 @@ import signal
 import sys
 import threading
 from typing import Any
+
+# Ensure stdout uses UTF-8 encoding on Windows to prevent CP950 UnicodeEncodeError
+if sys.platform == 'win32' and hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 from crawlers.twse_crawler import crawl_taiwan_market_index
 from crawlers.yfinance_crawler import fetch_ohlcv_histories_for_tickers
 from crawlers.anue_crawler import crawl_anue_stock_news
@@ -45,12 +50,12 @@ def _setup_logging(level=None):
 def _parse_args(argv=None):
     parser = argparse.ArgumentParser(
         prog='python -m app.main',
-        description='Taiwan Day Trading Stock Analysis System'
+        description='Taiwan Day Trading Stock Analysis & Paper Trading System'
     )
     parser.add_argument(
         'task',
-        choices=['crawl', 'run'],
-        help="'run' executes the full agent loop; 'crawl' only runs data collection."
+        choices=['crawl', 'run', 'gui'],
+        help="'gui' launches Web Dashboard; 'run' executes full agent loop & paper trade; 'crawl' only runs data collection."
     )
     parser.add_argument(
         'stock_code',
@@ -68,6 +73,12 @@ def _parse_args(argv=None):
         action='count',
         default=0,
         help='Increase logging verbosity (add -vv for DEBUG).'
+    )
+    parser.add_argument(
+        '--port',
+        type=int,
+        default=8000,
+        help='Port for Web GUI Server (default 8000).'
     )
     return parser.parse_args(argv)
 
@@ -121,79 +132,58 @@ def run_crawl(stock_code: str | None = None, date: str | None = None) -> None:
     results = _run_crawl(stock_code, date)
     for key, value in results.items():
         if isinstance(value, list):
-            print(f'  → [{key}] {len(value)} records')
+            print(f'  -> [{key}] {len(value)} records')
         elif isinstance(value, dict):
             keys_preview = ', '.join(list(value.keys())[:5])
-            print(f'  → [{key}] {len(value)} entries — {keys_preview}…')
+            print(f'  -> [{key}] {len(value)} entries — {keys_preview}...')
         else:
-            print(f'  → [{key}] {value}')
-    print('[done] crawl completed ✅')
+            print(f'  -> [{key}] {value}')
+    print('[done] crawl completed [OK]')
 
 
 def run_run_loop(stock_code: str | None = None, date: str | None = None) -> None:
-    '''Run the full agent-loop pipeline.'''
-    stock_code = stock_code or 'default'
-    logger.info(f'[run] 啟動 Agent Loop  (stock={stock_code}, date={date})')
-    raw_data = _run_crawl(stock_code, date)
+    '''Run the full agent-loop pipeline and execute Paper Trading order.'''
+    stock_code = stock_code or '2330.TW'
+    clean_ticker = stock_code.replace('.TW', '')
+    logger.info(f'[run] 啟動 Agent Loop & Paper Trading  (stock={stock_code})')
+    
+    from db.paper_trader import get_paper_trader
+    pt = get_paper_trader()
 
     if _maybe_import_crewai():
-        print('[run] → CrewAI is available — wiring multi-agent pipeline …')
-        from crewai import Agent, Task
-        researcher = Agent(
-            role='台股研究分析師',
-            goal=f'Based on stock data for {stock_code}, gather fundamental and technical insights.',
-            backstory='Expert in Taiwan equities, familiar with TWSE / Anue / Yahoo Finance data.'
-        )
-        news_agent = Agent(
-            role='股票新聞分析師',
-            goal='Identify short-term drivers (news, events, policy) affecting the stock.',
-            backstory='Covers financial journalism and market microstructure.'
-        )
-        price_agent = Agent(
-            role='技術分析師',
-            goal=f'Evaluate technical indicators for {stock_code}.',
-            backstory='Quantitative technical analyst.'
-        )
-        decision_agent = Agent(
-            role='決策者',
-            goal='Synthesise research, news and technical signals; output a long/flat/short recommendation.',
-            backstory='Senior portfolio-manager.'
-        )
-
-        t_research = Task(description=f'Gather fundamental data for {stock_code}', agent=researcher)
-        t_news = Task(description='Analyse recent news impact on price movements.', agent=news_agent)
-        t_price = Task(description='Produce technical indicator summary.', agent=price_agent)
-        t_decision = Task(
-            description='Combine the above reports and make a final recommendation.',
-            agent=decision_agent,
-            context=[t_research, t_news, t_price]
-        )
-
+        print('[run] -> CrewAI is available — wiring multi-agent pipeline...')
         try:
-            for name, agent in [
-                ('Researcher', researcher),
-                ('NewsAnalyst', news_agent),
-                ('PriceAnalyst', price_agent),
-                ('DecisionMaker', decision_agent)
-            ]:
-                if hasattr(agent, 'execute_sync'):
-                    res = agent.execute_sync()
-                    print(f'  → [{name}] finished (len={len(str(res))})')
-        except Exception as exc:
-            logger.error(f'CrewAI agent run failed: {exc}')
-            print('[run] crewai agent run fell back to raw data summary.')
+            from agents.team import run_crew
+            crew_out = run_crew(ticker=clean_ticker)
+            signal = crew_out.signal
+            report = crew_out.report
+        except Exception as e:
+            logger.error(f'CrewAI agent run failed: {e}')
+            from agents.decision_maker import synthesize_decision
+            signal = synthesize_decision(ticker=clean_ticker)
+            report = f"Fallback report for {clean_ticker}"
     else:
-        print('[run] → CrewAI NOT installed locally — falling back to sequential analysis:')
-        try:
-            from agents import researcher_agent, news_analyst_agent, price_analyst_agent, decision_maker
-            print('  → [Researcher] finished')
-            print('  → [NewsAnalyst] finished')
-            print('  → [PriceAnalyst] finished')
-            print('  → [DecisionMaker] finished')
-            print('[run] agents ran sequentially (no CrewAI).')
-        except ImportError as e:
-            logger.debug(f'agent error: {e}')
-            print('[run] no local agent modules. Raw crawl data available.')
+        print('[run] -> CrewAI NOT installed locally — executing heuristic agent flow:')
+        from agents.decision_maker import synthesize_decision
+        signal = synthesize_decision(ticker=clean_ticker, research_output="TWSE Data OK", news_output="Positive", price_output="RSI 55")
+        report = f"# 📊 交易報告 ({clean_ticker})\n\n- 方向: **{signal.get('side')}**\n- 信心度: {signal.get('confidence'):.0%}\n- 原因: {signal.get('reason')}"
+
+    # Execute paper trading simulation
+    trade_res = pt.execute_signal(signal, current_price=1000.0)
+    print("\n" + "="*50)
+    print(f"📊 模擬交易下單結果: {trade_res['status']} ({trade_res.get('action', signal.get('side'))})")
+    print(f"帳戶最新總資產: ${pt.get_account_summary()['total_equity']:,.2f}")
+    print("="*50 + "\n")
+    print(report)
+
+
+def run_gui_server(port: int = 8000) -> None:
+    '''Launch FastAPI Web Server for GUI Dashboard.'''
+    logger.info(f'Starting Web GUI Server on http://127.0.0.1:{port}')
+    import webbrowser
+    webbrowser.open(f'http://127.0.0.1:{port}')
+    from app.server import start_server
+    start_server(port=port)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -210,13 +200,15 @@ def main(argv: list[str] | None = None) -> int:
     signal.signal(signal.SIGTERM, _catch_signal)
 
     logger.info('============================================================')
-    logger.info('Taiwan Day Trading Stock Analysis System — starting …')
+    logger.info('Taiwan Day Trading Stock Analysis & Paper Trading System — starting...')
 
     if GRACEFUL_SHUTDOWN:
         logger.warning('\nShutdown requested on startup. Exiting.')
         return 1
 
-    if args.task == 'run':
+    if args.task == 'gui':
+        run_gui_server(port=args.port)
+    elif args.task == 'run':
         run_run_loop(stock_code=args.stock_code, date=args.date)
     else:
         run_crawl(stock_code=args.stock_code, date=args.date)

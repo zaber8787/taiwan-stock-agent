@@ -1,24 +1,25 @@
-# Source Generated with Decompyle++
-# File: __init__.cpython-311.pyc (Python 3.11)
+# File: db/__init__.py
 
-'''Stock agent database layer — MongoDB + Qdrant vector store.'''
+'''Stock agent database layer — MongoDB + Qdrant vector store + Paper Trader.'''
 from db.base_client import BaseDBClient
 from db.mongo_client import MongoClient, get_mongo_client
 from db.qdrant_manager import QdrantManager, get_qdrant_manager
-from db.schemas import CompanyProfile, CompanyIndex, DailyOHLCV, PriceIndex, NewsArticle, TradeRecord, Side, COMMISSION_RATE, STAMP_TAX_RATE, PortfolioSnapshot
+from db.paper_trader import PaperTrader, get_paper_trader
+
+try:
+    from db.schemas import (
+        CompanyProfile, CompanyIndex, DailyOHLCV, PriceIndex,
+        NewsArticle, TradeRecord, Side, COMMISSION_RATE, STAMP_TAX_RATE, PortfolioSnapshot
+    )
+except ImportError:
+    pass
+
 __all__ = [
     'BaseDBClient',
     'MongoClient',
     'get_mongo_client',
     'QdrantManager',
     'get_qdrant_manager',
-    'CompanyProfile',
-    'CompanyIndex',
-    'DailyOHLCV',
-    'PriceIndex',
-    'NewsArticle',
-    'TradeRecord',
-    'Side',
-    'COMMISSION_RATE',
-    'STAMP_TAX_RATE',
-    'PortfolioSnapshot']
+    'PaperTrader',
+    'get_paper_trader'
+]

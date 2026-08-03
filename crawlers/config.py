@@ -1,23 +1,30 @@
 # File: crawlers/config.py
 
-'''Crawler configuration — shared settings, default headers, delays.'''
+'''Crawler configuration — shared settings, default headers, delays (loads settings from .env).'''
 from __future__ import annotations
+import os
 import random
 import time
 from dataclasses import dataclass, field
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 
 
 @dataclass
 class CrawlerConfig:
     '''Shared crawler runtime settings.'''
-    scraping_delay_min: float = 1.0
-    scraping_delay_max: float = 3.0
-    max_retries: int = 3
-    user_agent_str: str = 'Mozilla/5.0 (compatible; StockAgent/1.0; +https://stock-agent.ai)'
+    scraping_delay_min: float = float(os.getenv('SCRAPING_DELAY_MIN', '1.0'))
+    scraping_delay_max: float = float(os.getenv('SCRAPING_DELAY_MAX', '3.0'))
+    max_retries: int = int(os.getenv('MAX_RETRIES', '3'))
+    user_agent_str: str = os.getenv('USER_AGENT', 'Mozilla/5.0 (compatible; StockAgent/1.0; +https://stock-agent.ai)')
 
     @classmethod
     def user_agent(cls) -> str:
-        return cls.user_agent_str
+        return os.getenv('USER_AGENT', cls.user_agent_str)
 
     def random_delay(self) -> float:
         return random.uniform(self.scraping_delay_min, self.scraping_delay_max)

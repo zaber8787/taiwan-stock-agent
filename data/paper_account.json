@@ -1,0 +1,61 @@
+{
+  "state": {
+    "portfolio_id": "default",
+    "cash": 699572.5,
+    "initial_capital": 1000000.0,
+    "holdings": {
+      "2881": {
+        "shares": 1000,
+        "cost_price": 100.14
+      },
+      "2330": {
+        "shares": 2000,
+        "cost_price": 100.14
+      }
+    },
+    "realized_pnl": 0.0,
+    "created_at": "2026-08-03T20:44:33.595105",
+    "updated_at": "2026-08-04T01:06:55.439122"
+  },
+  "trades": [
+    {
+      "trade_id": "38080259",
+      "time": "2026-08-03T20:44:33.596638",
+      "ticker": "2881",
+      "side": "BUY",
+      "price": 100.0,
+      "shares": 1000,
+      "total_cost": 100142.5,
+      "commission": 142.5,
+      "stamp_tax": 0.0,
+      "reason": "Strong earnings momentum",
+      "confidence": 0.8
+    },
+    {
+      "trade_id": "88b85ba8",
+      "time": "2026-08-03T22:33:22.289884",
+      "ticker": "2330",
+      "side": "BUY",
+      "price": 100.0,
+      "shares": 1000,
+      "total_cost": 100142.5,
+      "commission": 142.5,
+      "stamp_tax": 0.0,
+      "reason": "majority vote among 3 branches: signal=BUY",
+      "confidence": 0.7
+    },
+    {
+      "trade_id": "197a788d",
+      "time": "2026-08-04T01:06:55.439113",
+      "ticker": "2330",
+      "side": "BUY",
+      "price": 100.0,
+      "shares": 1000,
+      "total_cost": 100142.5,
+      "commission": 142.5,
+      "stamp_tax": 0.0,
+      "reason": "majority vote among 3 branches: signal=BUY",
+      "confidence": 0.7
+    }
+  ]
+}

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台股 AI 多 Agent 當沖與全自動事件監聽交易系統</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Banner -->
+    <header class="navbar">
+      <div class="brand">
+        <span class="icon">📈</span>
+        <h1>台股 AI 多 Agent 全自動交易系統</h1>
+        <span class="badge">Event-Driven Paper Trading v2.0</span>
+      </div>
+      <div class="nav-actions">
+        <span class="listener-status" id="listener-badge">
+          <span class="live-dot pulse"></span> 背景新聞監聽中 (<span id="stat-db-count">0</span> 家建檔)
+        </span>
+        <button id="btn-reset" class="btn btn-secondary">重置模擬本金</button>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="dashboard-grid">
+      
+      <!-- Account Overview Cards -->
+      <section class="banner-grid">
+        <div class="card stat-card">
+          <div class="stat-header">
+            <span class="stat-title">總資產 (Total Equity)</span>
+            <span class="stat-icon">💰</span>
+          </div>
+          <div id="stat-equity" class="stat-value">$1,000,000</div>
+          <div class="stat-sub">初始本金: <span id="stat-initial">$1,000,000</span></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-header">
+            <span class="stat-title">可用現金 (Available Cash)</span>
+            <span class="stat-icon">💵</span>
+          </div>
+          <div id="stat-cash" class="stat-value">$1,000,000</div>
+          <div class="stat-sub">最大單筆撥款比例: <span id="stat-max-alloc">20%</span></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-header">
+            <span class="stat-title">股票持倉市值</span>
+            <span class="stat-icon">📊</span>
+          </div>
+          <div id="stat-holdings-val" class="stat-value">$0</div>
+          <div class="stat-sub">當前持倉標的數: <span id="stat-holdings-count">0</span></div>
+        </div>
+
+        <div class="card stat-card">
+          <div class="stat-header">
+            <span class="stat-title">累積總損益 (Total ROI)</span>
+            <span class="stat-icon">🚀</span>
+          </div>
+          <div id="stat-roi" class="stat-value neutral">+0.00%</div>
+          <div class="stat-sub">未實現: <span id="stat-unrealized">$0</span> | 已實現: <span id="stat-realized">$0</span></div>
+        </div>
+      </section>
+
+      <!-- Live Event Feed Section (全自動新聞監聽牆) -->
+      <section class="card feed-card">
+        <div class="card-header">
+          <h2>📡 全自動即時新聞與 AI 事件動態牆 (Real-time Live Event Feed)</h2>
+        </div>
+        <div class="feed-body" id="feed-container">
+          <div class="empty-feed">正在背景自動掃描科技股/ETF 與即時新聞...</div>
+        </div>
+      </section>
+
+      <!-- AI Control & Allocation Preview Section -->
+      <section class="card control-card">
+        <div class="card-header">
+          <h2>🤖 手動觸發 AI 交易控制台與資金撥款試算</h2>
+        </div>
+        <div class="control-body">
+          <div class="input-group">
+            <label for="input-ticker">股票代碼 (e.g. 2330.TW, 2454.TW, 00929.TW)</label>
+            <div class="input-row">
+              <input type="text" id="input-ticker" value="2330.TW" placeholder="輸入台股代碼...">
+              <button id="btn-analyze" class="btn btn-primary">⚡ 啟動 AI 分析與模擬下單</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Capital Allocation Preview Card -->
+          <div class="allocation-box">
+            <div class="alloc-title">🛡️ 風控資金撥款預覽 (Dynamic Capital Allocation)</div>
+            <div class="alloc-grid">
+              <div class="alloc-item">
+                <span class="label">可用現金</span>
+                <span id="alloc-cash" class="val">$1,000,000</span>
+              </div>
+              <div class="alloc-item">
+                <span class="label">撥款上限 %</span>
+                <span id="alloc-limit-pct" class="val">20%</span>
+              </div>
+              <div class="alloc-item">
+                <span class="label">AI 信心度</span>
+                <span id="alloc-confidence" class="val">--</span>
+              </div>
+              <div class="alloc-item highlight">
+                <span class="label">擬撥出下單預算</span>
+                <span id="alloc-budget" class="val">$0</span>
+              </div>
+              <div class="alloc-item highlight">
+                <span class="label">預計換算張數</span>
+                <span id="alloc-shares" class="val">0 張</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Processing Logs -->
+          <div id="log-container" class="log-container hidden">
+            <div class="log-status">
+              <span class="spinner"></span>
+              <span id="log-message">4 大 AI Agent 協作分析中 (Researcher ➔ News ➔ Price ➔ Decision)...</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Current Positions Table -->
+      <section class="card table-card">
+        <div class="card-header">
+          <h2>📦 當前持倉明細 (Current Holdings)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>股票代碼</th>
+                <th>持倉張數</th>
+                <th>平均成本價</th>
+                <th>最新現價</th>
+                <th>當前市值</th>
+                <th>未實現損益 (TWD)</th>
+                <th>報酬率 (%)</th>
+              </tr>
+            </thead>
+            <tbody id="holdings-tbody">
+              <tr>
+                <td colspan="7" class="empty-msg">目前尚無股票持倉。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Trade Execution History -->
+      <section class="card table-card">
+        <div class="card-header">
+          <h2>📜 歷史模擬交易日誌 (Trade Log)</h2>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>時間</th>
+                <th>交易編號</th>
+                <th>代碼</th>
+                <th>動作</th>
+                <th>單價</th>
+                <th>張數</th>
+                <th>成交金額/淨額</th>
+                <th>手續費+稅金</th>
+                <th>AI 決策理由</th>
+                <th>詳細報告</th>
+              </tr>
+            </thead>
+            <tbody id="trades-tbody">
+              <tr>
+                <td colspan="10" class="empty-msg">尚無模擬交易紀錄。</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Report Modal Drawer -->
+    <div id="report-modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">📊 完整 AI 交易分析報告</h3>
+          <button id="modal-close" class="close-btn">&times;</button>
+        </div>
+        <div id="modal-body" class="modal-body markdown-body">
+          <!-- Markdown Content -->
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

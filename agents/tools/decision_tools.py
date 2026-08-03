@@ -1,6 +1,6 @@
 # File: agents/tools/decision_tools.py
 
-'''Decision-layer tools used by DecisionMaker agent.'''
+'''Decision-layer tools used by DecisionMaker agent (integrated with PaperTrader).'''
 from __future__ import annotations
 import textwrap
 from typing import Any
@@ -14,12 +14,11 @@ class FinalPortfolioCheck(BaseTool):
     description: str = "Read the current portfolio holdings, cash, and equity."
 
     def execute(self, portfolio_id: str = "default") -> str:
-        from db.mongo_client import get_mongo_client
-        mc = get_mongo_client()
-        doc = mc.find_one("portfolio", {"portfolio_id": portfolio_id})
-        if doc:
-            return f"Portfolio {portfolio_id}: cash=${doc.get('cash', 0):,.2f}, total_value=${doc.get('total_value', 0):,.2f}"
-        return f"Portfolio {portfolio_id}: cash=$1,000,000.00, total_value=$1,000,000.00 (default)"
+        from db.paper_trader import get_paper_trader
+        pt = get_paper_trader()
+        summary = pt.get_account_summary()
+        holdings_str = ", ".join([f"{h['ticker']}:{h['shares']}股" for h in summary['holdings']]) or "無持倉"
+        return f"Portfolio: 可用現金=${summary['cash']:,.2f}, 股票市值=${summary['holdings_value']:,.2f}, 總權益=${summary['total_equity']:,.2f}, 累積總損益=${summary['total_pnl']:,.2f} ({summary['total_roi_pct']:+.2f}%), 當前持倉:[{holdings_str}]"
 
     def _run(self, portfolio_id: str = "default") -> str:
         return self.execute(portfolio_id=portfolio_id)
@@ -29,16 +28,18 @@ def calculate_position_size(
     capital: float = 1000000.0,
     ticker: str = "2330",
     confidence: float = 0.5,
-    risk_pct: float = 0.1
+    risk_pct: float = 0.20
 ) -> PositionRecommendation:
-    '''Compute recommended share count + all costs for a trade.'''
-    budget = capital * min(max(confidence * risk_pct, 0.01), 0.2)
-    entry_price = 100.0
-    shares = max(int(budget / (entry_price * 1000)) * 1000, 1000)
+    '''Compute recommended share count + all costs for a trade using PaperTrader rules.'''
+    from db.paper_trader import get_paper_trader
+    pt = get_paper_trader()
+    alloc = pt.calculate_allocation(ticker=ticker, current_price=1000.0, confidence=confidence)
+    shares = alloc['suggested_shares']
+    entry_price = alloc['current_price']
     total_cost = shares * entry_price
-    commission = total_cost * 0.001425
+    commission = max(20.0, total_cost * 0.001425)
     stamp_tax = total_cost * 0.003
-    effective_cost = total_cost + commission + stamp_tax
+    effective_cost = total_cost + commission
 
     return PositionRecommendation(
         ticker=ticker,
@@ -83,7 +84,7 @@ def generate_trade_report(
 
     if portfolio:
         lines.extend([
-            '### 持倉摘要',
+            '### 帳戶與持倉狀態',
             f'- {portfolio}',
             ''
         ])
