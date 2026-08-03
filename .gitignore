@@ -1,0 +1,15 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv*/
+.venv/
+env/
+
+# Scratch & binaries
+scratch/
+pycdc.exe
+pycdas.exe
+disasm_report.txt
