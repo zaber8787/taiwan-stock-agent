@@ -72,12 +72,10 @@ class NewsEventListener:
 
     def _match_ticker(self, text: str, known_tickers: list[str]) -> str | None:
         '''Match ticker code or company name in news text.'''
-        # Direct ticker match (e.g., 2330, 2454, 00929)
         for ticker in known_tickers:
             if ticker in text:
                 return ticker
 
-        # Keyword mapping for major companies
         name_map = {
             '台積電': '2330', '聯發科': '2454', '聯電': '2303', '廣達': '2382',
             '緯創': '3231', '鴻海': '2317', '技嘉': '2376', '大立光': '3008',
@@ -91,11 +89,9 @@ class NewsEventListener:
 
     async def _process_news_event(self, ticker: str, title: str, summary: str) -> dict[str, Any]:
         '''Run AI Agents on matched news event & trigger paper trade if confidence >= 0.70.'''
-        # 1. Store vector embedding in Qdrant if available
         try:
             from db.qdrant_manager import get_qdrant_manager
             qm = get_qdrant_manager()
-            # Upsert payload info
             if qm.is_connected():
                 qm.upsert_news(
                     articles=[{'id': str(uuid.uuid4()), 'title': title, 'summary': summary, 'ticker': ticker}],
@@ -104,7 +100,6 @@ class NewsEventListener:
         except Exception:
             pass
 
-        # 2. Trigger AI Agent Analysis
         try:
             from agents.team import run_crew
             crew_out = run_crew(ticker=ticker)
@@ -117,11 +112,10 @@ class NewsEventListener:
         confidence = float(signal.get('confidence', 0.5))
         reason = signal.get('reason', '')
 
-        # 3. Execute Paper Trade if signal is strong (confidence >= 0.70)
         trade_status = "SKIPPED"
         trade_action = side
         if confidence >= _MIN_CONFIDENCE_FOR_AUTO_TRADE and side in ('BUY', 'SELL'):
-            exec_res = self.pt.execute_signal(signal, current_price=0.0) # Price auto-fetched in trader
+            exec_res = self.pt.execute_signal(signal, current_price=0.0)
             trade_status = exec_res.get('status', 'EXECUTED')
             trade_action = exec_res.get('action', side)
 
@@ -153,6 +147,13 @@ class NewsEventListener:
 
 def get_recent_news_events() -> list[dict[str, Any]]:
     return _recent_events
+
+
+def clear_recent_news_events() -> None:
+    global _recent_events, _seen_news_ids
+    _recent_events.clear()
+    _seen_news_ids.clear()
+    logger.info("🧹 [NewsListener] 即時新聞事件廣播牆已完全重置清空。")
 
 
 def get_listener_status() -> dict[str, Any]:

@@ -297,5 +297,100 @@
     "summary": "元大台灣高息低波 (00713) — 產業類別: 高息低波ETF。主要個股/ETF 行情資料。",
     "created_at": "2026-08-03T22:30:49.244931",
     "updated_at": "2026-08-03T22:30:49.244937"
+  },
+  "2408": {
+    "ticker": "2408",
+    "full_ticker": "2408.TW",
+    "name": "南亞科",
+    "category": "記憶體",
+    "tags": [
+      "記憶體",
+      "DRAM",
+      "半導體",
+      "AI"
+    ],
+    "current_price": 396.5,
+    "pe_ratio": "N/A",
+    "eps": "N/A",
+    "market_cap": "N/A",
+    "summary": "南亞科 (2408) — 產業: 記憶體 | 標籤: 記憶體, DRAM, 半導體, AI",
+    "created_at": "2026-08-04T01:31:27.164336",
+    "updated_at": "2026-08-04T01:31:27.164349"
+  },
+  "2344": {
+    "ticker": "2344",
+    "full_ticker": "2344.TW",
+    "name": "華邦電",
+    "category": "記憶體",
+    "tags": [
+      "記憶體",
+      "DRAM",
+      "Flash",
+      "半導體"
+    ],
+    "current_price": 143.0,
+    "pe_ratio": "N/A",
+    "eps": "N/A",
+    "market_cap": "N/A",
+    "summary": "華邦電 (2344) — 產業: 記憶體 | 標籤: 記憶體, DRAM, Flash, 半導體",
+    "created_at": "2026-08-04T01:31:29.128728",
+    "updated_at": "2026-08-04T01:31:29.128735"
+  },
+  "8299": {
+    "ticker": "8299",
+    "full_ticker": "8299.TW",
+    "name": "群聯",
+    "category": "記憶體",
+    "tags": [
+      "記憶體",
+      "NAND",
+      "控制晶片",
+      "AI"
+    ],
+    "current_price": 1760.0,
+    "pe_ratio": "N/A",
+    "eps": "N/A",
+    "market_cap": "N/A",
+    "summary": "群聯 (8299) — 產業: 記憶體 | 標籤: 記憶體, NAND, 控制晶片, AI",
+    "created_at": "2026-08-04T01:31:29.730786",
+    "updated_at": "2026-08-04T01:31:29.730797"
+  },
+  "3017": {
+    "ticker": "3017",
+    "full_ticker": "3017.TW",
+    "name": "奇鋐",
+    "category": "散熱模組",
+    "tags": [
+      "散熱",
+      "AI伺服器散熱",
+      "水冷",
+      "電子零組件"
+    ],
+    "current_price": 2550.0,
+    "pe_ratio": "N/A",
+    "eps": "N/A",
+    "market_cap": "N/A",
+    "summary": "奇鋐 (3017) — 產業: 散熱模組 | 標籤: 散熱, AI伺服器散熱, 水冷, 電子零組件",
+    "created_at": "2026-08-04T01:31:30.458422",
+    "updated_at": "2026-08-04T01:31:30.458432"
+  },
+  "3324": {
+    "ticker": "3324",
+    "full_ticker": "3324.TW",
+    "name": "雙鴻",
+    "category": "散熱模組",
+    "tags": [
+      "散熱",
+      "AI伺服器散熱",
+      "水冷",
+      "電子零組件"
+    ],
+    "current_price": 944.0,
+    "pe_ratio": "N/A",
+    "eps": "N/A",
+    "market_cap": "N/A",
+    "summary": "雙鴻 (3324) — 產業: 散熱模組 | 標籤: 散熱, AI伺服器散熱, 水冷, 電子零組件",
+    "created_at": "2026-08-04T01:31:31.071658",
+    "updated_at": "2026-08-04T01:31:31.071665"
   }
 }

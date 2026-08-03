@@ -75,7 +75,30 @@ body {
 .nav-actions {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 0.85rem;
+}
+
+/* DB Badges */
+.db-badge {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--card-border);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.badge-tag.online {
+  color: var(--profit-color);
+  font-weight: 600;
+}
+
+.badge-tag.fallback {
+  color: var(--warning-color);
+  font-weight: 600;
 }
 
 .listener-status {
@@ -168,6 +191,45 @@ body {
 .stat-value.loss { color: var(--loss-color); }
 .stat-value.neutral { color: var(--text-main); }
 
+/* Watchlist Timers Panel */
+.watchlist-card {
+  border-color: rgba(255, 171, 0, 0.3);
+}
+
+.watchlist-body {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.watch-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 171, 0, 0.08);
+  border: 1px solid rgba(255, 171, 0, 0.25);
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+}
+
+.watch-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.watch-ticker {
+  font-weight: 700;
+  color: var(--warning-color);
+}
+
+.watch-timer {
+  font-weight: 800;
+  color: var(--warning-color);
+  font-size: 1.1rem;
+}
+
 /* Live Event Feed Wall */
 .feed-card {
   border-color: rgba(0, 176, 255, 0.2);
@@ -209,54 +271,12 @@ body {
 .feed-title {
   font-weight: 600;
   color: var(--text-main);
-
 }
 
 .feed-meta {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-}
-
-/* Control & Allocation Box */
-.card-header h2 {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.control-body {
-  margin-top: 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-
-.input-group label {
-  display: block;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-
-.input-row {
-  display: flex;
-  gap: 0.75rem;
-}
-
-input[type="text"] {
-  flex: 1;
-  background: rgba(10, 14, 22, 0.8);
-  border: 1px solid var(--card-border);
-  color: var(--text-main);
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
-  font-size: 1rem;
-  outline: none;
-  transition: border-color 0.2s;
-}
-
-input[type="text"]:focus {
-  border-color: var(--primary-accent);
 }
 
 /* Buttons */
@@ -268,17 +288,6 @@ input[type="text"]:focus {
   cursor: pointer;
   border: none;
   transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: var(--primary-gradient);
-  color: #050b14;
-  box-shadow: 0 4px 15px rgba(0, 176, 255, 0.3);
-}
-
-.btn-primary:hover {
-  opacity: 0.9;
-  transform: translateY(-1px);
 }
 
 .btn-secondary {
@@ -295,75 +304,6 @@ input[type="text"]:focus {
   padding: 0.3rem 0.75rem;
   font-size: 0.8rem;
   border-radius: 6px;
-}
-
-/* Allocation Box */
-.allocation-box {
-  background: rgba(10, 15, 25, 0.6);
-  border: 1px solid rgba(0, 176, 255, 0.2);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-}
-
-.alloc-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--primary-accent);
-  margin-bottom: 0.75rem;
-}
-
-.alloc-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1rem;
-}
-
-.alloc-item {
-  display: flex;
-  flex-direction: column;
-}
-
-.alloc-item .label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-}
-
-.alloc-item .val {
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.alloc-item.highlight .val {
-  color: var(--primary-accent);
-}
-
-/* Progress Spinner Log */
-.log-container {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid var(--card-border);
-  padding: 1rem;
-  border-radius: 10px;
-}
-
-.log-status {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-size: 0.9rem;
-  color: var(--primary-accent);
-}
-
-.spinner {
-  width: 18px;
-  height: 18px;
-  border: 2px solid rgba(0, 176, 255, 0.2);
-  border-top-color: var(--primary-accent);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Tables */

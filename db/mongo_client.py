@@ -40,7 +40,7 @@ class MongoClient(BaseDBClient):
             raise RuntimeError('pymongo is not installed')
         if self.is_connected():
             return
-        self._client = _PyMongoClient(self._uri, serverSelectionTimeoutMS=5000)
+        self._client = _PyMongoClient(self._uri, serverSelectionTimeoutMS=3000)
         self._client.admin.command('ping')
         self._is_connected = True
 
@@ -79,7 +79,6 @@ class MongoClient(BaseDBClient):
         coll.delete_many(filter_)
 
     def bulk_insert(self, collection_name: str, docs_list: list[dict]) -> int:
-        '''Efficient batch insert with acknowledged write concern.'''
         if not docs_list:
             return 0
         coll = self.get_collection(collection_name)
@@ -88,8 +87,19 @@ class MongoClient(BaseDBClient):
 
 
 def get_mongo_client() -> MongoClient:
-    '''Return the global/first MongoClient instance (connects on-demand).'''
     global _instance
     if _instance is None:
         _instance = MongoClient()
     return _instance
+
+
+def check_mongo_status() -> dict[str, Any]:
+    '''Helper to test MongoDB connection status on startup.'''
+    if not HAS_PYMONGO:
+        return {'connected': False, 'uri': _MONGO_URI, 'db_name': _DB_NAME, 'reason': 'pymongo not installed'}
+    mc = get_mongo_client()
+    try:
+        mc.connect()
+        return {'connected': True, 'uri': _MONGO_URI, 'db_name': _DB_NAME, 'reason': 'OK'}
+    except Exception as e:
+        return {'connected': False, 'uri': _MONGO_URI, 'db_name': _DB_NAME, 'reason': str(e)}

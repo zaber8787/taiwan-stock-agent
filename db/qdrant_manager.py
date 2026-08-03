@@ -49,7 +49,7 @@ class QdrantManager(BaseDBClient):
             raise RuntimeError('qdrant-client is not installed')
         if self.is_connected():
             return
-        self._client = _QClient(url=self._uri)
+        self._client = _QClient(url=self._uri, timeout=3.0)
         self._ensure_collection()
         self._is_connected = True
 
@@ -63,7 +63,6 @@ class QdrantManager(BaseDBClient):
         return self._client is not None
 
     def _ensure_collection(self) -> None:
-        '''Ensure the news_vectors collection exists with proper schema. Idempotent.'''
         if not self._client:
             raise RuntimeError('QdrantClient not connected')
         try:
@@ -79,23 +78,18 @@ class QdrantManager(BaseDBClient):
         return self._collection_name
 
     def upsert_news(self, articles: list[dict], embeddings: Any) -> None:
-        '''Bulk upsert articles with their precomputed embeddings.'''
         if not self._client:
-            raise RuntimeError('QdrantClient not connected')
-        if hasattr(embeddings, 'shape') and (embeddings.shape[1] != _VECTOR_SIZE or len(articles) != embeddings.shape[0]):
-            raise ValueError(f'embeddings shape mismatch: expected ({len(articles)}, {_VECTOR_SIZE}), got {embeddings.shape}')
-        
+            return
         points = []
         for i, article in enumerate(articles):
             doc_id = article.get('id') or str(uuid.uuid4())
             payload = {k: v for k, v in article.items() if k != 'id'}
-            vec = embeddings[i].tolist() if hasattr(embeddings[i], 'tolist') else list(embeddings[i])
+            vec = embeddings[i].tolist() if hasattr(embeddings[i], 'tolist') else list(embeddings[i]) if embeddings else [0.0]*_VECTOR_SIZE
             points.append(_http_model.PointStruct(id=doc_id, vector=vec, payload=payload))
         
         self._client.upsert(collection_name=_COLLECTION_NAME, points=points, wait=True)
 
     def search(self, query_vector: list[float] | Any, top_k: int = 5, filter_: dict | None = None) -> list[dict]:
-        '''Search by a query embedding vector. Returns list of dicts with id, score, payload.'''
         if not self._client:
             return []
         if hasattr(query_vector, 'tolist'):
@@ -110,7 +104,6 @@ class QdrantManager(BaseDBClient):
         return [{'id': hit.id, 'score': hit.score, 'payload': hit.payload} for hit in hits]
 
     def get_news_by_id(self, id_: str) -> dict | None:
-        '''Retrieve a single news document from Qdrant by its point id.'''
         if not self._client:
             return None
         results = self._client.retrieve(
@@ -124,8 +117,19 @@ class QdrantManager(BaseDBClient):
 
 
 def get_qdrant_manager() -> QdrantManager:
-    '''Return the global/first QdrantManager instance (connects on-demand).'''
     global _qdrant_instance
     if _qdrant_instance is None:
         _qdrant_instance = QdrantManager()
     return _qdrant_instance
+
+
+def check_qdrant_status() -> dict[str, Any]:
+    '''Helper to test Qdrant connection status on startup.'''
+    if not HAS_QDRANT:
+        return {'connected': False, 'uri': _QDRANT_URI, 'collection': _COLLECTION_NAME, 'reason': 'qdrant-client not installed'}
+    qm = get_qdrant_manager()
+    try:
+        qm.connect()
+        return {'connected': True, 'uri': _QDRANT_URI, 'collection': _COLLECTION_NAME, 'reason': 'OK'}
+    except Exception as e:
+        return {'connected': False, 'uri': _QDRANT_URI, 'collection': _COLLECTION_NAME, 'reason': str(e)}

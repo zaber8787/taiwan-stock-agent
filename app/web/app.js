@@ -1,29 +1,24 @@
-// Web GUI JavaScript App Logic
+// Web GUI JavaScript App Logic - Pure Monitoring Command Center
 document.addEventListener('DOMContentLoaded', () => {
   const statEquity = document.getElementById('stat-equity');
   const statInitial = document.getElementById('stat-initial');
   const statCash = document.getElementById('stat-cash');
   const statMaxAlloc = document.getElementById('stat-max-alloc');
   const statHoldingsVal = document.getElementById('stat-holdings-val');
-  const statHoldingsCount = document.getElementById('stat-holdings-count');
+  const statPositionsLimit = document.getElementById('stat-positions-limit');
   const statRoi = document.getElementById('stat-roi');
   const statUnrealized = document.getElementById('stat-unrealized');
   const statRealized = document.getElementById('stat-realized');
   const statDbCount = document.getElementById('stat-db-count');
 
-  const allocCash = document.getElementById('alloc-cash');
-  const allocLimitPct = document.getElementById('alloc-limit-pct');
-  const allocConfidence = document.getElementById('alloc-confidence');
-  const allocBudget = document.getElementById('alloc-budget');
-  const allocShares = document.getElementById('alloc-shares');
+  const mktStatusText = document.getElementById('mkt-status-text');
+  const dbMongoBadge = document.getElementById('db-mongo-badge');
+  const dbQdrantBadge = document.getElementById('db-qdrant-badge');
 
-  const inputTicker = document.getElementById('input-ticker');
-  const btnAnalyze = document.getElementById('btn-analyze');
   const btnReset = document.getElementById('btn-reset');
-  const logContainer = document.getElementById('log-container');
-  const logMessage = document.getElementById('log-message');
-
   const feedContainer = document.getElementById('feed-container');
+  const watchlistContainer = document.getElementById('watchlist-container');
+  const universeTbody = document.getElementById('universe-tbody');
   const holdingsTbody = document.getElementById('holdings-tbody');
   const tradesTbody = document.getElementById('trades-tbody');
 
@@ -38,6 +33,86 @@ document.addEventListener('DOMContentLoaded', () => {
     return '$' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
+  // Load Market Status (Trading hours vs Off-market)
+  async function loadMarketStatus() {
+    try {
+      const res = await fetch('/api/market-status');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (mktStatusText) mktStatusText.textContent = data.status_text || '🟢 盤中交易中';
+    } catch (err) {
+      console.error("Failed to load market status:", err);
+    }
+  }
+
+  // Load Active Watchlist Timers (WATCH mode)
+  async function loadWatchlistTimers() {
+    try {
+      const res = await fetch('/api/watchlist');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderWatchlistTimers(data.watchlist || []);
+    } catch (err) {
+      console.error("Failed to load watchlist timers:", err);
+    }
+  }
+
+  function renderWatchlistTimers(list) {
+    if (!list || list.length === 0) {
+      watchlistContainer.innerHTML = `<div class="empty-feed">尚無 Agent 預約的排程觀察標的。當 Agent 偵測到連動族群補漲機會時，將在此處展示倒數與觀察原因。</div>`;
+      return;
+    }
+
+    watchlistContainer.innerHTML = list.map(w => {
+      const remMins = Math.floor(w.remaining_seconds / 60);
+      const remSecs = w.remaining_seconds % 60;
+      const timeStr = `${remMins}分 ${remSecs}秒`;
+      return `
+        <div class="watch-item">
+          <div class="watch-info">
+            <span class="watch-ticker">[${w.ticker}]</span>
+            <span>觀察原因: ${w.reason}</span>
+            ${w.deferred_off_market ? '<span class="badge" style="background:rgba(255,171,0,0.2); color:#ffab00;">隔日開盤再評估</span>' : ''}
+          </div>
+          <div class="watch-timer">⏱️ 倒數 ${timeStr}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Load Full Universe Watchlist Grid
+  async function loadUniverseWatchlist() {
+    try {
+      const res = await fetch('/api/autotrader/universe');
+      if (!res.ok) return;
+      const data = await res.json();
+      renderUniverseTable(data.universe || []);
+    } catch (err) {
+      console.error("Failed to load universe watchlist:", err);
+    }
+  }
+
+  function renderUniverseTable(items) {
+    if (!items || items.length === 0) {
+      universeTbody.innerHTML = `<tr><td colspan="6" class="empty-msg">全自動交易引擎巡檢中...</td></tr>`;
+      return;
+    }
+
+    universeTbody.innerHTML = items.map(u => {
+      const sideBadge = `<span class="${u.ai_signal === 'BUY' ? 'badge-buy' : u.ai_signal === 'SELL' ? 'badge-sell' : 'badge-hold'}">${u.ai_signal}</span>`;
+      return `
+        <tr>
+          <td><strong>${u.ticker}</strong></td>
+          <td>$${u.price.toFixed(2)}</td>
+          <td>${sideBadge}</td>
+          <td>${(u.confidence * 100).toFixed(0)}%</td>
+          <td><span style="color:${u.holding_status.includes('持有') ? 'var(--profit-color)' : 'var(--text-muted)'}">${u.holding_status}</span></td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">${u.updated_at}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
   // Load Listener & DB Status
   async function loadListenerStatus() {
     try {
@@ -45,8 +120,22 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) return;
       const data = await res.json();
       if (statDbCount) statDbCount.textContent = data.companies_in_db || 0;
+
+      if (data.db) {
+        updateDbBadge(dbMongoBadge, 'Mongo', data.db.mongo);
+        updateDbBadge(dbQdrantBadge, 'Qdrant', data.db.qdrant);
+      }
     } catch (err) {
       console.error("Failed to load listener status:", err);
+    }
+  }
+
+  function updateDbBadge(el, name, dbInfo) {
+    if (!el || !dbInfo) return;
+    if (dbInfo.connected) {
+      el.innerHTML = `${name}: <span class="badge-tag online">✅ 連線成功</span>`;
+    } else {
+      el.innerHTML = `${name}: <span class="badge-tag fallback" title="${dbInfo.reason}">⚠️ 本地備份檔</span>`;
     }
   }
 
@@ -64,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderNewsFeed(events) {
     if (!events || events.length === 0) {
-      feedContainer.innerHTML = `<div class="empty-feed">📡 背景新聞監聽運行中...（監聽頻率: 每 3 分鐘，偵測到科技股/ETF 新聞時自動觸發 AI 下單）</div>`;
+      feedContainer.innerHTML = `<div class="empty-feed">📡 背景新聞監聽與全自動交易運作中...（每 3 分鐘自動偵測並廣播事件）</div>`;
       return;
     }
 
@@ -99,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
       statInitial.textContent = formatMoney(data.initial_capital);
       statCash.textContent = formatMoney(data.cash);
       statHoldingsVal.textContent = formatMoney(data.holdings_value);
-      statHoldingsCount.textContent = data.holdings.length;
+      statPositionsLimit.textContent = `${data.holdings.length} / ${data.max_positions_limit || 5} 檔`;
       
       const roi = data.total_roi_pct || 0;
       statRoi.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
@@ -107,8 +196,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
       statUnrealized.textContent = formatMoney(data.unrealized_pnl);
       statRealized.textContent = formatMoney(data.realized_pnl);
-
-      allocCash.textContent = formatMoney(data.cash);
 
       renderHoldings(data.holdings);
     } catch (err) {
@@ -131,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderHoldings(holdings) {
     if (!holdings || holdings.length === 0) {
-      holdingsTbody.innerHTML = `<tr><td colspan="7" class="empty-msg">目前尚無股票持倉。</td></tr>`;
+      holdingsTbody.innerHTML = `<tr><td colspan="9" class="empty-msg">目前尚無股票持倉。</td></tr>`;
       return;
     }
 
@@ -145,6 +232,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <td>${h.shares.toLocaleString()} 股 (${h.lots} 張)</td>
           <td>$${h.cost_price.toFixed(2)}</td>
           <td>$${h.current_price.toFixed(2)}</td>
+          <td>$${(h.highest_price || h.cost_price).toFixed(2)}</td>
+          <td style="font-size:0.8rem; color:var(--text-muted);">${h.buy_date || '--'}</td>
           <td>${formatMoney(h.market_value)}</td>
           <td class="${pnlClass}">${pnl >= 0 ? '+' : ''}${formatMoney(pnl)}</td>
           <td class="${pnlClass}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%</td>
@@ -165,6 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const timeStr = t.time ? t.time.replace('T', ' ').substring(0, 19) : '--';
       const costOrRev = isBuy ? t.total_cost : t.net_revenue;
       const taxFee = (t.commission || 0) + (t.stamp_tax || 0);
+      const taxLabel = t.tax_rate_label ? `<br><span style="font-size:0.7rem; color:var(--profit-color);">${t.tax_rate_label}</span>` : '';
 
       return `
         <tr>
@@ -172,61 +262,16 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><code>${t.trade_id}</code></td>
           <td><strong>${t.ticker}</strong></td>
           <td>${sideBadge}</td>
-          <td>$${t.price.toFixed(2)}</td>
+          <td>$${t.price.toFixed(2)} <span style="font-size:0.7rem; color:var(--text-muted);">(含0.5%滑價)</span></td>
           <td>${t.shares.toLocaleString()} 股</td>
           <td>${formatMoney(costOrRev)}</td>
-          <td>$${taxFee.toFixed(2)}</td>
-          <td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.reason}">${t.reason}</td>
+          <td>$${taxFee.toFixed(2)} ${taxLabel}</td>
+          <td style="max-width:240px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${t.reason}">${t.reason}</td>
           <td><button class="btn btn-secondary btn-action-small" onclick="viewTradeReport(${idx})">檢視報告</button></td>
         </tr>
       `;
     }).join('');
   }
-
-  btnAnalyze.addEventListener('click', async () => {
-    const stockCode = inputTicker.value.trim();
-    if (!stockCode) {
-      alert("請輸入股票代碼！");
-      return;
-    }
-
-    btnAnalyze.disabled = true;
-    logContainer.classList.remove('hidden');
-    logMessage.textContent = `🤖 4 大 AI Agent 正在深度分析 ${stockCode}...`;
-
-    try {
-      const res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stock_code: stockCode })
-      });
-
-      if (!res.ok) {
-        throw new Error("AI 分析服務異常");
-      }
-
-      const data = await res.json();
-      
-      if (data.allocation_preview) {
-        const ap = data.allocation_preview;
-        allocConfidence.textContent = (ap.confidence * 100).toFixed(0) + '%';
-        allocBudget.textContent = formatMoney(ap.budget);
-        allocShares.textContent = `${ap.suggested_shares.toLocaleString()} 股 (${ap.suggested_lots} 張)`;
-      }
-
-      await loadAccountData();
-      await loadTradeLogs();
-
-      logMessage.textContent = `✅ ${stockCode} 分析與模擬交易完成！結果: ${data.trade_execution.status} (${data.trade_execution.action || data.signal.side})`;
-      
-      openModal(`📊 AI 交易分析報告 - ${stockCode}`, data.report_markdown);
-
-    } catch (err) {
-      logMessage.textContent = `❌ 錯誤: ${err.message}`;
-    } finally {
-      btnAnalyze.disabled = false;
-    }
-  });
 
   btnReset.addEventListener('click', async () => {
     if (!confirm("確定要重置模擬帳戶本金與持倉嗎？歷史紀錄將清空。")) return;
@@ -239,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         await loadAccountData();
         await loadTradeLogs();
-        alert("帳戶已被成功重置！");
+        alert("帳戶與持倉已被成功重置！");
       }
     } catch (err) {
       alert("重置帳戶失敗");
@@ -249,7 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
   window.viewTradeReport = function(idx) {
     const trade = currentTradeLogs[idx];
     if (trade) {
-      const mdContent = `# 📜 交易單報告 (${trade.ticker} - ${trade.side})\n\n- **交易時間**: ${trade.time}\n- **成交價**: $${trade.price}\n- **股數**: ${trade.shares} 股\n- **手續費+稅金**: $${(trade.commission + trade.stamp_tax).toFixed(2)}\n\n### 🤖 AI 決策理由\n> ${trade.reason}`;
+      const mdContent = `# 📜 交易單報告 (${trade.ticker} - ${trade.side})\n\n- **交易時間**: ${trade.time}\n- **成交價 (含0.5%滑價)**: $${trade.price}\n- **股數**: ${trade.shares} 股\n- **券商手續費 (2折)**: $${trade.commission.toFixed(2)}\n- **證交稅**: $${(trade.stamp_tax || 0).toFixed(2)} ${trade.tax_rate_label || ''}\n\n### 🤖 AI 決策與離場觸發理由\n> ${trade.reason}`;
       openModal(`📜 交易單報告 - ${trade.ticker} (${trade.trade_id})`, mdContent);
     }
   };
@@ -268,13 +313,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === reportModal) reportModal.classList.add('hidden');
   });
 
-  // Initial Load & Polling
+  // Initial Load & Polling Loops
   loadAccountData();
   loadTradeLogs();
+  loadMarketStatus();
+  loadWatchlistTimers();
+  loadUniverseWatchlist();
   loadListenerStatus();
   loadNewsFeed();
 
-  setInterval(loadAccountData, 10000);
-  setInterval(loadNewsFeed, 15000);
+  setInterval(loadWatchlistTimers, 3000);
+  setInterval(loadAccountData, 8000);
+  setInterval(loadUniverseWatchlist, 10000);
+  setInterval(loadNewsFeed, 12000);
+  setInterval(loadMarketStatus, 30000);
   setInterval(loadListenerStatus, 30000);
 });

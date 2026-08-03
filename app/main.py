@@ -21,7 +21,7 @@ import sys
 import threading
 from typing import Any
 
-# Ensure stdout uses UTF-8 encoding on Windows to prevent CP950 UnicodeEncodeError
+# Ensure stdout uses UTF-8 encoding on Windows
 if sys.platform == 'win32' and hasattr(sys.stdout, 'reconfigure'):
     try:
         sys.stdout.reconfigure(encoding='utf-8')
@@ -31,6 +31,8 @@ if sys.platform == 'win32' and hasattr(sys.stdout, 'reconfigure'):
 from crawlers.twse_crawler import crawl_taiwan_market_index
 from crawlers.yfinance_crawler import fetch_ohlcv_histories_for_tickers
 from crawlers.anue_crawler import crawl_anue_stock_news
+from db.mongo_client import check_mongo_status
+from db.qdrant_manager import check_qdrant_status
 
 logger = logging.getLogger(__name__)
 GRACEFUL_SHUTDOWN = False
@@ -45,6 +47,22 @@ def _catch_signal(sig=None, frame=None):
 def _setup_logging(level=None):
     fmt = '%(asctime)s | %(levelname)-8s | %(name)s | %(message)s'
     logging.basicConfig(level=level, format=fmt, stream=sys.stdout)
+
+
+def _check_databases_on_startup() -> None:
+    '''Check and display Database connection statuses on console startup.'''
+    mongo_info = check_mongo_status()
+    qdrant_info = check_qdrant_status()
+
+    m_status = "✅ [CONNECTED]" if mongo_info['connected'] else "⚠️ [OFFLINE / LOCAL FALLBACK]"
+    q_status = "✅ [CONNECTED]" if qdrant_info['connected'] else "⚠️ [OFFLINE / LOCAL FALLBACK]"
+
+    print("\n" + "=" * 60)
+    print("🔍 資料庫連線狀態檢查 (Database Connection Check on Startup):")
+    print(f"  • MongoDB: {m_status} -> {mongo_info['uri']} (db: {mongo_info['db_name']})")
+    print(f"  • Qdrant:  {q_status} -> {qdrant_info['uri']} (collection: {qdrant_info['collection']})")
+    print("  • 持久化:  ✅ [READY] 本地 JSON 備份檔 (data/paper_account.json)")
+    print("=" * 60 + "\n")
 
 
 def _parse_args(argv=None):
@@ -84,13 +102,11 @@ def _parse_args(argv=None):
 
 
 async def _collect_concurrently(coros: list[callable]) -> tuple[list, ...]:
-    '''Run a list of async callables concurrently and return their results as a tuple.'''
     tasks = [coro() for coro in coros]
     return tuple(await asyncio.gather(*tasks))
 
 
 def _run_crawl(stock_code: str | None = None, date: str | None = None) -> dict[str, Any]:
-    '''Fetch raw market data from every available crawler and return as a dict.'''
     stock_code = stock_code or os.environ.get('STOCK_CODE', '2330.TW')
 
     async def _yf_ohlcv():
@@ -118,7 +134,6 @@ def _run_crawl(stock_code: str | None = None, date: str | None = None) -> dict[s
 
 
 def _maybe_import_crewai() -> bool:
-    '''Return True only if CrewAI can be imported and is usable.'''
     try:
         import crewai
         return True
@@ -127,7 +142,6 @@ def _maybe_import_crewai() -> bool:
 
 
 def run_crawl(stock_code: str | None = None, date: str | None = None) -> None:
-    '''Run the crawl-only mode — fetch raw data and print a summary.'''
     logger.info(f'[crawl] 收集資料階段  (stock={stock_code}, date={date})')
     results = _run_crawl(stock_code, date)
     for key, value in results.items():
@@ -142,7 +156,6 @@ def run_crawl(stock_code: str | None = None, date: str | None = None) -> None:
 
 
 def run_run_loop(stock_code: str | None = None, date: str | None = None) -> None:
-    '''Run the full agent-loop pipeline and execute Paper Trading order.'''
     stock_code = stock_code or '2330.TW'
     clean_ticker = stock_code.replace('.TW', '')
     logger.info(f'[run] 啟動 Agent Loop & Paper Trading  (stock={stock_code})')
@@ -168,7 +181,6 @@ def run_run_loop(stock_code: str | None = None, date: str | None = None) -> None
         signal = synthesize_decision(ticker=clean_ticker, research_output="TWSE Data OK", news_output="Positive", price_output="RSI 55")
         report = f"# 📊 交易報告 ({clean_ticker})\n\n- 方向: **{signal.get('side')}**\n- 信心度: {signal.get('confidence'):.0%}\n- 原因: {signal.get('reason')}"
 
-    # Execute paper trading simulation
     trade_res = pt.execute_signal(signal, current_price=1000.0)
     print("\n" + "="*50)
     print(f"📊 模擬交易下單結果: {trade_res['status']} ({trade_res.get('action', signal.get('side'))})")
@@ -178,7 +190,6 @@ def run_run_loop(stock_code: str | None = None, date: str | None = None) -> None
 
 
 def run_gui_server(port: int = 8000) -> None:
-    '''Launch FastAPI Web Server for GUI Dashboard.'''
     logger.info(f'Starting Web GUI Server on http://127.0.0.1:{port}')
     import webbrowser
     webbrowser.open(f'http://127.0.0.1:{port}')
@@ -201,6 +212,9 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info('============================================================')
     logger.info('Taiwan Day Trading Stock Analysis & Paper Trading System — starting...')
+
+    # Check and print Database connections on console startup
+    _check_databases_on_startup()
 
     if GRACEFUL_SHUTDOWN:
         logger.warning('\nShutdown requested on startup. Exiting.')

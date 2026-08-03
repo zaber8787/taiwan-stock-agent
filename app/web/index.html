@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>台股 AI 多 Agent 當沖與全自動事件監聽交易系統</title>
+  <title>台股 AI 短線波段與微觀籌碼全自動交易指揮中心</title>
   <link rel="stylesheet" href="/static/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,16 +16,62 @@
     <header class="navbar">
       <div class="brand">
         <span class="icon">📈</span>
-        <h1>台股 AI 多 Agent 全自動交易系統</h1>
-        <span class="badge">Event-Driven Paper Trading v2.0</span>
+        <h1>台股 AI 微觀籌碼全自動交易指揮中心</h1>
+        <span class="badge">Microstructure Strategy v4.0</span>
       </div>
       <div class="nav-actions">
-        <span class="listener-status" id="listener-badge">
-          <span class="live-dot pulse"></span> 背景新聞監聽中 (<span id="stat-db-count">0</span> 家建檔)
+        <!-- Market Status Badge -->
+        <span class="db-badge" id="mkt-status-badge">
+          <span id="mkt-status-text">🟢 盤中交易中</span>
+        </span>
+        <!-- DB Status Badges -->
+        <span class="db-badge" id="db-mongo-badge">Mongo: <span class="badge-tag">...</span></span>
+        <span class="db-badge" id="db-qdrant-badge">Qdrant: <span class="badge-tag">...</span></span>
+        <span class="listener-status">
+          <span class="live-dot pulse"></span> 自動監聽中 (<span id="stat-db-count">0</span> 家建檔)
         </span>
         <button id="btn-reset" class="btn btn-secondary">重置模擬本金</button>
       </div>
     </header>
+
+    <!-- Strategy Rule Banner -->
+    <section class="banner-grid" style="margin-bottom:1.5rem;">
+      <div class="card rule-card">
+        <div class="stat-header">
+          <span class="stat-title">手續費與稅率優化</span>
+          <span class="stat-icon">🏷️</span>
+        </div>
+        <div class="stat-value" style="font-size:1.2rem; color:var(--primary-accent);">2折退佣 (0.0285%)</div>
+        <div class="stat-sub">當沖避險稅率: <span style="color:var(--profit-color); font-weight:bold;">0.15% (省50%稅)</span></div>
+      </div>
+
+      <div class="card rule-card">
+        <div class="stat-header">
+          <span class="stat-title">剛性避險停損機制</span>
+          <span class="stat-icon">🛡️</span>
+        </div>
+        <div class="stat-value" style="font-size:1.2rem; color:var(--loss-color);">-6% 無條件平倉</div>
+        <div class="stat-sub">盤中走勢破位時發起當沖平倉</div>
+      </div>
+
+      <div class="card rule-card">
+        <div class="stat-header">
+          <span class="stat-title">動態移動停利</span>
+          <span class="stat-icon">🎯</span>
+        </div>
+        <div class="stat-value" style="font-size:1.2rem; color:var(--profit-color);">+10% 激活 / 回檔 2%</div>
+        <div class="stat-sub">自最高點回檔 2% 市價鎖定獲利</div>
+      </div>
+
+      <div class="card rule-card">
+        <div class="stat-header">
+          <span class="stat-title">高週轉時間離場</span>
+          <span class="stat-icon">⌛</span>
+        </div>
+        <div class="stat-value" style="font-size:1.2rem; color:var(--warning-color);">T+4 時間強制平倉</div>
+        <div class="stat-sub">持倉滿 3 天未發動，第 4 天清倉</div>
+      </div>
+    </section>
 
     <!-- Main Content Grid -->
     <main class="dashboard-grid">
@@ -47,16 +93,16 @@
             <span class="stat-icon">💵</span>
           </div>
           <div id="stat-cash" class="stat-value">$1,000,000</div>
-          <div class="stat-sub">最大單筆撥款比例: <span id="stat-max-alloc">20%</span></div>
+          <div class="stat-sub">單筆撥款上限: <span id="stat-max-alloc">20%</span> / 檔</div>
         </div>
 
         <div class="card stat-card">
           <div class="stat-header">
-            <span class="stat-title">股票持倉市值</span>
+            <span class="stat-title">持倉部位風控</span>
             <span class="stat-icon">📊</span>
           </div>
-          <div id="stat-holdings-val" class="stat-value">$0</div>
-          <div class="stat-sub">當前持倉標的數: <span id="stat-holdings-count">0</span></div>
+          <div id="stat-positions-limit" class="stat-value">0 / 5 檔</div>
+          <div class="stat-sub">持倉市值: <span id="stat-holdings-val">$0</span></div>
         </div>
 
         <div class="card stat-card">
@@ -69,71 +115,56 @@
         </div>
       </section>
 
-      <!-- Live Event Feed Section (全自動新聞監聽牆) -->
-      <section class="card feed-card">
+      <!-- Active Watchlist & Agent Cron Timers Panel -->
+      <section class="card watchlist-card">
         <div class="card-header">
-          <h2>📡 全自動即時新聞與 AI 事件動態牆 (Real-time Live Event Feed)</h2>
+          <h2>⏱️ Agent 排程觀察與 Cron 倒數面板 (Active Watchlist Timers)</h2>
         </div>
-        <div class="feed-body" id="feed-container">
-          <div class="empty-feed">正在背景自動掃描科技股/ETF 與即時新聞...</div>
+        <div class="watchlist-body" id="watchlist-container">
+          <div class="empty-feed">尚無 Agent 預約的排程觀察標的。當 Agent 偵測到連動族群補漲機會時，將在此處展示倒數與觀察原因。</div>
         </div>
       </section>
 
-      <!-- AI Control & Allocation Preview Section -->
-      <section class="card control-card">
+      <!-- Full Universe Watchlist Grid (全市場監控表) -->
+      <section class="card table-card">
         <div class="card-header">
-          <h2>🤖 手動觸發 AI 交易控制台與資金撥款試算</h2>
+          <h2>📊 全市場台股科技股與 ETF 巡檢清單 (Monitored Universe Watchlist)</h2>
         </div>
-        <div class="control-body">
-          <div class="input-group">
-            <label for="input-ticker">股票代碼 (e.g. 2330.TW, 2454.TW, 00929.TW)</label>
-            <div class="input-row">
-              <input type="text" id="input-ticker" value="2330.TW" placeholder="輸入台股代碼...">
-              <button id="btn-analyze" class="btn btn-primary">⚡ 啟動 AI 分析與模擬下單</button>
-            </div>
-          </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>股票代碼</th>
+                <th>最新現價</th>
+                <th>AI 評級訊號</th>
+                <th>AI 信心度</th>
+                <th>當前持倉狀態</th>
+                <th>最後巡檢時間</th>
+              </tr>
+            </thead>
+            <tbody id="universe-tbody">
+              <tr>
+                <td colspan="6" class="empty-msg">全自動交易引擎巡檢中...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-          <!-- Dynamic Capital Allocation Preview Card -->
-          <div class="allocation-box">
-            <div class="alloc-title">🛡️ 風控資金撥款預覽 (Dynamic Capital Allocation)</div>
-            <div class="alloc-grid">
-              <div class="alloc-item">
-                <span class="label">可用現金</span>
-                <span id="alloc-cash" class="val">$1,000,000</span>
-              </div>
-              <div class="alloc-item">
-                <span class="label">撥款上限 %</span>
-                <span id="alloc-limit-pct" class="val">20%</span>
-              </div>
-              <div class="alloc-item">
-                <span class="label">AI 信心度</span>
-                <span id="alloc-confidence" class="val">--</span>
-              </div>
-              <div class="alloc-item highlight">
-                <span class="label">擬撥出下單預算</span>
-                <span id="alloc-budget" class="val">$0</span>
-              </div>
-              <div class="alloc-item highlight">
-                <span class="label">預計換算張數</span>
-                <span id="alloc-shares" class="val">0 張</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Processing Logs -->
-          <div id="log-container" class="log-container hidden">
-            <div class="log-status">
-              <span class="spinner"></span>
-              <span id="log-message">4 大 AI Agent 協作分析中 (Researcher ➔ News ➔ Price ➔ Decision)...</span>
-            </div>
-          </div>
+      <!-- Live Event Feed Section -->
+      <section class="card feed-card">
+        <div class="card-header">
+          <h2>📡 即時自動交易廣播牆 (Live Event & Auto-Trade Stream)</h2>
+        </div>
+        <div class="feed-body" id="feed-container">
+          <div class="empty-feed">📡 背景新聞監聽與全自動交易運作中...（每 3 分鐘自動偵測並廣播事件）</div>
         </div>
       </section>
 
       <!-- Current Positions Table -->
       <section class="card table-card">
         <div class="card-header">
-          <h2>📦 當前持倉明細 (Current Holdings)</h2>
+          <h2>📦 當前持倉明細與離場條件監控 (Current Holdings & Exit Rules)</h2>
         </div>
         <div class="table-responsive">
           <table class="data-table">
@@ -143,6 +174,8 @@
                 <th>持倉張數</th>
                 <th>平均成本價</th>
                 <th>最新現價</th>
+                <th>最高報價</th>
+                <th>進場日期</th>
                 <th>當前市值</th>
                 <th>未實現損益 (TWD)</th>
                 <th>報酬率 (%)</th>
@@ -150,7 +183,7 @@
             </thead>
             <tbody id="holdings-tbody">
               <tr>
-                <td colspan="7" class="empty-msg">目前尚無股票持倉。</td>
+                <td colspan="9" class="empty-msg">目前尚無股票持倉。</td>
               </tr>
             </tbody>
           </table>
@@ -160,7 +193,7 @@
       <!-- Trade Execution History -->
       <section class="card table-card">
         <div class="card-header">
-          <h2>📜 歷史模擬交易日誌 (Trade Log)</h2>
+          <h2>📜 歷史全自動模擬交易日誌 (Trade Log)</h2>
         </div>
         <div class="table-responsive">
           <table class="data-table">
@@ -170,11 +203,11 @@
                 <th>交易編號</th>
                 <th>代碼</th>
                 <th>動作</th>
-                <th>單價</th>
+                <th>成交價(含滑價)</th>
                 <th>張數</th>
                 <th>成交金額/淨額</th>
-                <th>手續費+稅金</th>
-                <th>AI 決策理由</th>
+                <th>手續費(2折)+稅金</th>
+                <th>AI 決策理由 / 離場觸發條件</th>
                 <th>詳細報告</th>
               </tr>
             </thead>

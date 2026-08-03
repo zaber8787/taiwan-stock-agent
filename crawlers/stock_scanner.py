@@ -2,7 +2,7 @@
 
 '''
 Stock & ETF Universe Scanner & Auto Ingestion Manager.
-Scans Taiwan Tech Stocks & ETFs, checks DB, performs deep profile lookup, and ingests missing data.
+Scans Taiwan Tech Stocks & ETFs, checks DB, performs deep profile lookup, and ingests missing data with multi-tags.
 '''
 from __future__ import annotations
 import os
@@ -20,38 +20,45 @@ logger = logging.getLogger(__name__)
 _LOCAL_DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 _COMPANIES_FILE = os.path.join(_LOCAL_DATA_DIR, 'companies.json')
 
-# Tech Stocks & ETFs Universe
+# Tech Stocks & ETFs Universe with Multi-Tag Metadata
 TARGET_UNIVERSE = [
     # Semiconductors & Foundry
-    {'ticker': '2330.TW', 'name': '台積電', 'category': '半導體'},
-    {'ticker': '2454.TW', 'name': '聯發科', 'category': '半導體IC設計'},
-    {'ticker': '2303.TW', 'name': '聯電', 'category': '半導體晶圓代工'},
-    {'ticker': '3034.TW', 'name': '聯詠', 'category': '半導體IC設計'},
-    {'ticker': '2379.TW', 'name': '瑞昱', 'category': '半導體網通IC'},
-    {'ticker': '3443.TW', 'name': '創意', 'category': 'IP/ASIC'},
-    {'ticker': '3661.TW', 'name': '世芯-KY', 'category': 'IP/ASIC'},
+    {'ticker': '2330.TW', 'name': '台積電', 'category': '半導體', 'tags': ['半導體', '晶圓代工', 'AI', 'CoWoS', '先進封裝', '權值股']},
+    {'ticker': '2454.TW', 'name': '聯發科', 'category': '半導體IC設計', 'tags': ['半導體', 'IC設計', 'AI', '手機晶片']},
+    {'ticker': '2303.TW', 'name': '聯電', 'category': '半導體晶圓代工', 'tags': ['半導體', '晶圓代工', '成熟製程']},
+    {'ticker': '3034.TW', 'name': '聯詠', 'category': '半導體IC設計', 'tags': ['半導體', 'IC設計', '驅動IC']},
+    {'ticker': '2379.TW', 'name': '瑞昱', 'category': '半導體網通IC', 'tags': ['半導體', 'IC設計', '網通IC']},
+    {'ticker': '3443.TW', 'name': '創意', 'category': 'IP/ASIC', 'tags': ['半導體', 'IP', 'ASIC', 'AI']},
+    {'ticker': '3661.TW', 'name': '世芯-KY', 'category': 'IP/ASIC', 'tags': ['半導體', 'IP', 'ASIC', 'AI']},
+
+    # Memory
+    {'ticker': '2408.TW', 'name': '南亞科', 'category': '記憶體', 'tags': ['記憶體', 'DRAM', '半導體', 'AI']},
+    {'ticker': '2344.TW', 'name': '華邦電', 'category': '記憶體', 'tags': ['記憶體', 'DRAM', 'Flash', '半導體']},
+    {'ticker': '8299.TW', 'name': '群聯', 'category': '記憶體', 'tags': ['記憶體', 'NAND', '控制晶片', 'AI']},
     
     # AI Servers & Systems
-    {'ticker': '2382.TW', 'name': '廣達', 'category': 'AI伺服器/電腦'},
-    {'ticker': '3231.TW', 'name': '緯創', 'category': 'AI伺服器/代工'},
-    {'ticker': '2317.TW', 'name': '鴻海', 'category': '組裝代工/電動車'},
-    {'ticker': '2376.TW', 'name': '技嘉', 'category': 'AI伺服器/主機板'},
-    {'ticker': '2356.TW', 'name': '英業達', 'category': 'AI伺服器'},
-    {'ticker': '2377.TW', 'name': '微星', 'category': '電競/主機板'},
+    {'ticker': '2382.TW', 'name': '廣達', 'category': 'AI伺服器/電腦', 'tags': ['AI', 'AI伺服器', '代工', '筆電', '雲端']},
+    {'ticker': '3231.TW', 'name': '緯創', 'category': 'AI伺服器/代工', 'tags': ['AI', 'AI伺服器', '代工', '雲端']},
+    {'ticker': '2317.TW', 'name': '鴻海', 'category': '組裝代工/電動車', 'tags': ['AI', 'AI伺服器', '組裝', '電動車', '蘋果']},
+    {'ticker': '2376.TW', 'name': '技嘉', 'category': 'AI伺服器/主機板', 'tags': ['AI', 'AI伺服器', '主機板', '電競']},
+    {'ticker': '2356.TW', 'name': '英業達', 'category': 'AI伺服器', 'tags': ['AI', 'AI伺服器', '代工']},
+    {'ticker': '2377.TW', 'name': '微星', 'category': '電競/主機板', 'tags': ['電競', '主機板', '顯示卡']},
     
-    # Electronics & Components
-    {'ticker': '3008.TW', 'name': '大立光', 'category': '光學鏡頭'},
-    {'ticker': '2308.TW', 'name': '台達電', 'category': '電源/綠能/AI電源'},
-    
+    # Cooling & Power Components
+    {'ticker': '3017.TW', 'name': '奇鋐', 'category': '散熱模組', 'tags': ['散熱', 'AI伺服器散熱', '水冷', '電子零組件']},
+    {'ticker': '3324.TW', 'name': '雙鴻', 'category': '散熱模組', 'tags': ['散熱', 'AI伺服器散熱', '水冷', '電子零組件']},
+    {'ticker': '2308.TW', 'name': '台達電', 'category': '電源/綠能/AI電源', 'tags': ['電源', 'AI電源', '綠能', '電動車']},
+
+    # Optics
+    {'ticker': '3008.TW', 'name': '大立光', 'category': '光學鏡頭', 'tags': ['光學鏡頭', '蘋果', '手機零組件']},
+
     # Popular High-Dividend & Tech ETFs
-    {'ticker': '0050.TW', 'name': '元大台灣50', 'category': '市值型ETF'},
-    {'ticker': '0056.TW', 'name': '元大高股息', 'category': '高股息ETF'},
-    {'ticker': '00878.TW', 'name': '國泰永續高股息', 'category': '高股息ETF'},
-    {'ticker': '00919.TW', 'name': '群益台灣精選高息', 'category': '高股息ETF'},
-    {'ticker': '00929.TW', 'name': '復華台灣科技優息', 'category': '科技高股息ETF'},
-    {'ticker': '00940.TW', 'name': '元大台灣價值高息', 'category': '高股息ETF'},
-    {'ticker': '00918.TW', 'name': '大華銀優選高股息', 'category': '高股息ETF'},
-    {'ticker': '00713.TW', 'name': '元大台灣高息低波', 'category': '高息低波ETF'}
+    {'ticker': '0050.TW', 'name': '元大台灣50', 'category': '市值型ETF', 'tags': ['ETF', '市值型', '權值股']},
+    {'ticker': '0056.TW', 'name': '元大高股息', 'category': '高股息ETF', 'tags': ['ETF', '高股息', '永續']},
+    {'ticker': '00878.TW', 'name': '國泰永續高股息', 'category': '高股息ETF', 'tags': ['ETF', '高股息', '永續']},
+    {'ticker': '00919.TW', 'name': '群益台灣精選高息', 'category': '高股息ETF', 'tags': ['ETF', '高股息']},
+    {'ticker': '00929.TW', 'name': '復華台灣科技優息', 'category': '科技高股息ETF', 'tags': ['ETF', '高股息', '科技高股息', '半導體']},
+    {'ticker': '00940.TW', 'name': '元大台灣價值高息', 'category': '高股息ETF', 'tags': ['ETF', '高股息']}
 ]
 
 
@@ -88,7 +95,6 @@ class StockScanner:
             ticker = item['ticker']
             clean_code = ticker.replace('.TW', '')
 
-            # Check if exists in MongoDB or local DB
             exists_in_mongo = False
             try:
                 from db.mongo_client import get_mongo_client
@@ -102,14 +108,12 @@ class StockScanner:
             exists_in_local = clean_code in self.companies_db
 
             if not exists_in_mongo and not exists_in_local or force_update:
-                logger.info(f"📥 [StockScanner] 發現新標的/缺檔標的: {ticker} ({item['name']}) -> 執行深度爬取與建檔...")
+                logger.info(f"📥 [StockScanner] 發現新標的/缺檔標的: {ticker} ({item['name']}) -> 執行深度爬取與多標籤建檔...")
                 profile = await self._deep_ingest_stock(ticker, item)
                 
-                # Persist to local JSON
                 self.companies_db[clean_code] = profile
                 self._save_local_companies()
 
-                # Persist to MongoDB if available
                 try:
                     from db.mongo_client import get_mongo_client
                     mc = get_mongo_client()
@@ -129,35 +133,29 @@ class StockScanner:
             'items': list(self.companies_db.values())
         }
 
-    async def _deep_ingest_stock(self, ticker: str, meta: dict[str, str]) -> dict[str, Any]:
-        '''Perform deep multi-source crawling (Yahoo Finance + MOPS + OHLCV) to build company profile.'''
+    async def _deep_ingest_stock(self, ticker: str, meta: dict[str, Any]) -> dict[str, Any]:
         clean_code = ticker.replace('.TW', '')
-        
-        # 1. Fetch Yahoo Finance Page Profile
         yf_res = await fetch_yahoo_stock_page(clean_code)
         yf_data = yf_res.get('data', {}) if yf_res.get('success') else {}
-
-        # 2. Fetch MOPS Financials
         mops_res = await crawl_mops_financial_statement(clean_code)
 
-        # Assemble rich company profile
         profile = {
             'ticker': clean_code,
             'full_ticker': ticker,
             'name': meta['name'],
             'category': meta['category'],
+            'tags': meta.get('tags', [meta['category']]),
             'current_price': yf_data.get('price', 0.0),
             'pe_ratio': yf_data.get('pe_ratio', 'N/A'),
             'eps': mops_res.get('eps', 'N/A') if isinstance(mops_res, dict) else 'N/A',
             'market_cap': yf_data.get('market_cap', 'N/A'),
-            'summary': f"{meta['name']} ({clean_code}) — 產業類別: {meta['category']}。主要個股/ETF 行情資料。",
+            'summary': f"{meta['name']} ({clean_code}) — 產業: {meta['category']} | 標籤: {', '.join(meta.get('tags', []))}",
             'created_at': datetime.now().isoformat(),
             'updated_at': datetime.now().isoformat()
         }
         return profile
 
     def get_known_tickers(self) -> list[str]:
-        '''Return list of clean ticker codes in database.'''
         return list(set(list(self.companies_db.keys()) + [item['ticker'].replace('.TW', '') for item in TARGET_UNIVERSE]))
 
 
