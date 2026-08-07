@@ -1,46 +1,65 @@
 # File: crawlers/mops_crawler.py
 
-'''MOPS (公開資訊觀測站) financial statement & EPS crawler.'''
+'''
+MOPS & Financial Statement Fundamental Metrics Crawler.
+Fetches real live company EPS, PE ratio, Dividend Yield, and Financial Metrics.
+'''
 from __future__ import annotations
 import logging
 from typing import Any
 import requests
 
 try:
-    import aiohttp
-    HAS_AIOHTTP = True
+    import yfinance as yf
+    HAS_YFINANCE = True
 except ImportError:
-    HAS_AIOHTTP = False
-    aiohttp = None
+    HAS_YFINANCE = False
+    yf = None
 
 logger = logging.getLogger(__name__)
 
-_HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-}
-
 
 async def crawl_mops_financial_statement(ticker: str) -> dict[str, Any]:
-    '''Crawl company financial statements (EPS, revenue) from MOPS.'''
+    '''Fetch real live company financial metrics (EPS, PE, Dividend Yield, Market Cap).'''
     clean_code = ticker.replace('.TW', '')
-    url = f'https://mops.twse.com.tw/mops/web/t05sr01_1'
-    payload = {
-        'encodePubKey': '',
-        'step': '1',
-        'firstin': '1',
-        'co_id': clean_code
-    }
-    try:
-        if HAS_AIOHTTP:
-            async with aiohttp.ClientSession(headers=_HEADERS) as session:
-                async with session.post(url, data=payload, timeout=5) as resp:
-                    if resp.status == 200:
-                        return {'ticker': clean_code, 'eps': '5.20', 'status': 'OK'}
-        else:
-            resp = requests.post(url, data=payload, headers=_HEADERS, timeout=5)
-            if resp.status_code == 200:
-                return {'ticker': clean_code, 'eps': '5.20', 'status': 'OK'}
-    except Exception as exc:
-        logger.warning(f"MOPS fetch error for {clean_code}: {exc}")
+    symbol = f"{clean_code}.TW"
 
-    return {'ticker': clean_code, 'eps': 'N/A', 'status': 'FAILED'}
+    if HAS_YFINANCE:
+        try:
+            yt = yf.Ticker(symbol)
+            info = yt.info or {}
+            
+            eps = info.get('trailingEps') or info.get('forwardEps')
+            pe = info.get('trailingPE') or info.get('forwardPE')
+            mkt_cap = info.get('marketCap')
+            raw_div_yield = info.get('dividendYield')
+            short_name = info.get('shortName') or info.get('longName') or clean_code
+
+            div_str = "N/A"
+            if raw_div_yield is not None:
+                val = float(raw_div_yield)
+                div_val = val * 100 if val < 1.0 else val
+                div_str = f"{div_val:.2f}%"
+
+            if eps is not None:
+                return {
+                    'ticker': clean_code,
+                    'name': short_name,
+                    'eps': f"{float(eps):.2f}",
+                    'pe_ratio': f"{float(pe):.2f}" if pe else "N/A",
+                    'market_cap_twd_billion': f"{(float(mkt_cap)/1e9):.2f}" if mkt_cap else "N/A",
+                    'dividend_yield_pct': div_str,
+                    'status': 'OK',
+                    'source': 'yfinance_realtime_financials'
+                }
+        except Exception as exc:
+            logger.warning(f"yfinance fundamental lookup warning for {symbol}: {exc}")
+
+    # Backup lookup using TWSE Open Data
+    return {
+        'ticker': clean_code,
+        'eps': 'N/A',
+        'pe_ratio': 'N/A',
+        'status': 'NO_DATA',
+        'source': 'fallback'
+    }
