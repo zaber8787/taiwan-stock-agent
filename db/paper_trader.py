@@ -28,7 +28,10 @@ logger = logging.getLogger(__name__)
 
 _INITIAL_CAPITAL = float(os.getenv('INITIAL_CAPITAL', '1000000'))
 _MAX_ALLOCATION_PCT = float(os.getenv('MAX_CAPITAL_ALLOCATION_PCT', '0.20'))
-_MAX_POSITIONS_LIMIT = 5
+_MAX_POSITIONS_LIMIT = int(os.getenv('MAX_POSITIONS_LIMIT', '5'))
+_MAX_SINGLE_STOCK_PCT = float(os.getenv('MAX_SINGLE_STOCK_PCT', '0.20'))
+_MAX_SINGLE_STOCK_LOTS = int(os.getenv('MAX_SINGLE_STOCK_LOTS', '10'))
+_MAX_INDUSTRY_PCT = float(os.getenv('MAX_INDUSTRY_PCT', '0.50'))
 
 # 2-Discount Broker Fee (0.1425% * 0.20 = 0.0285%)
 _COMMISSION_RATE = 0.001425 * 0.20
@@ -47,6 +50,13 @@ _LOCAL_DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 _LOCAL_STORAGE_FILE = os.path.join(_LOCAL_DATA_DIR, 'paper_account.json')
 _instance: PaperTrader | None = None
 
+# Industry mapping for concentration checks
+_INDUSTRY_MAP = {
+    '2330': '半導體', '2454': '半導體', '2303': '半導體', '3008': '半導體',
+    '2382': '電腦設備', '3231': '電腦設備', '2317': '電子零組件', '2376': '電子零組件',
+    '0050': 'ETF', '0056': 'ETF', '00878': 'ETF', '00919': 'ETF', '00929': 'ETF', '00940': 'ETF'
+}
+
 
 class PaperTrader:
     '''Microstructure Short-Term Strategy Paper Trading Engine.'''
@@ -56,6 +66,62 @@ class PaperTrader:
         self.portfolio_id = 'default'
         os.makedirs(_LOCAL_DATA_DIR, exist_ok=True)
         self._load_state()
+
+    @staticmethod
+    def get_stock_industry(ticker: str) -> str | None:
+        '''Get industry for a given ticker.'''
+        clean_ticker = ticker.replace('.TW', '')
+        return _INDUSTRY_MAP.get(clean_ticker)
+
+    def get_industry_holdings_value(self, ticker: str) -> float:
+        '''Calculate total holdings value for the ticker's industry.'''
+        industry = self.get_stock_industry(ticker)
+        if not industry:
+            return 0.0
+        
+        industry_value = 0.0
+        for hold_ticker, info in self.state.get('holdings', {}).items():
+            if self.get_stock_industry(hold_ticker) == industry:
+                shares = info.get('shares', 0)
+                cost_price = info.get('cost_price', 0)
+                industry_value += shares * cost_price
+        
+        return industry_value
+
+    def check_industry_concentration(self, ticker: str, proposed_value: float) -> tuple[bool, str]:
+        '''
+        Check if adding this stock would exceed industry concentration limit.
+        Returns (is_allowed, reason_message)
+        '''
+        industry = self.get_stock_industry(ticker)
+        if not industry:
+            return True, "No industry classification"
+        
+        current_industry_value = self.get_industry_holdings_value(ticker)
+        proposed_total = current_industry_value + proposed_value
+        proposed_pct = proposed_total / self.initial_capital if self.initial_capital > 0 else 0
+        
+        if proposed_pct > _MAX_INDUSTRY_PCT:
+            return False, f"Industry {industry} would exceed {_MAX_INDUSTRY_PCT*100:.0f}% limit ({proposed_pct*100:.1f}%)"
+        
+        return True, f"Industry {industry} concentration OK ({proposed_pct*100:.1f}%)"
+
+    def check_single_stock_limit(self, ticker: str, proposed_shares: int, price: float) -> tuple[bool, str]:
+        '''
+        Check if proposed position exceeds single stock limits.
+        Returns (is_allowed, reason_message)
+        '''
+        proposed_value = proposed_shares * price
+        proposed_pct = proposed_value / self.initial_capital if self.initial_capital > 0 else 0
+        proposed_lots = proposed_shares // 1000
+        
+        if proposed_lots > _MAX_SINGLE_STOCK_LOTS:
+            return False, f"Exceeds max {_MAX_SINGLE_STOCK_LOTS} lots limit ({proposed_lots} lots)"
+        
+        if proposed_pct > _MAX_SINGLE_STOCK_PCT:
+            return False, f"Exceeds {_MAX_SINGLE_STOCK_PCT*100:.0f}% single stock limit ({proposed_pct*100:.1f}%)"
+        
+        return True, f"Single stock limit OK ({proposed_lots} lots, {proposed_pct*100:.1f}%)"
 
     def _load_state(self) -> None:
         self.state = {
@@ -234,13 +300,32 @@ class PaperTrader:
         side = signal.get('side', 'HOLD').upper()
         confidence = float(signal.get('confidence', 0.5))
         reason = signal.get('reason', '')
-        current_price = current_price or float(signal.get('price_target', 0.0) or 100.0)
-
+        
+        # 優先使用傳入的 current_price
+        if current_price <= 0:
+            # 次選：檢查 signal 中的 price_target
+            current_price = signal.get('price_target', 0.0)
+        
+        # 第三選項：自動從 yfinance 抓取當前股價
+        if current_price <= 0 and ticker:
+            try:
+                import yfinance as yf
+                stock = yf.Ticker(f"{ticker}.TW")
+                hist = stock.history(period='1d')
+                if not hist.empty:
+                    current_price = float(hist['Close'].iloc[-1])
+                    logger.info(f"📊 [PaperTrader] 自動抓取 {ticker} 當前股價：${current_price:.2f} (from yfinance)")
+            except Exception as e:
+                logger.warning(f"⚠️ [PaperTrader] yfinance 抓取失敗: {e}")
+                current_price = 0
+        
         if not ticker or current_price <= 0:
-            return {'status': 'SKIPPED', 'reason': 'Invalid ticker or price'}
+            return {'status': 'SKIPPED', 'reason': 'Invalid ticker or price - current_price required and could not be fetched from yfinance'}
 
         if side == 'BUY':
             current_holdings = self.state['holdings']
+            
+            # Check positions limit
             if ticker not in current_holdings and len(current_holdings) >= _MAX_POSITIONS_LIMIT:
                 logger.warning(f"⛔ [PaperTrader] 已達全帳戶持倉上限 ({_MAX_POSITIONS_LIMIT} 檔)，自動拒絕 {ticker} 買進下單。")
                 return {
@@ -257,6 +342,19 @@ class PaperTrader:
                     'status': 'REJECTED',
                     'reason': f"Insufficient cash (available ${self.state['cash']:,.2f}, budget ${alloc['budget']:,.2f}) to buy 1 lot of {ticker} at ${exec_price}"
                 }
+
+            # Check single stock limits
+            allowed, msg = self.check_single_stock_limit(ticker, shares, current_price)
+            if not allowed:
+                logger.warning(f"⛔ [PaperTrader] {ticker} 違反單檔限制：{msg}")
+                return {'status': 'REJECTED', 'reason': msg}
+
+            # Check industry concentration
+            proposed_value = shares * current_price
+            allowed, msg = self.check_industry_concentration(ticker, proposed_value)
+            if not allowed:
+                logger.warning(f"⛔ [PaperTrader] {ticker} 違反產業集中度限制：{msg}")
+                return {'status': 'REJECTED', 'reason': msg}
 
             trade_value = shares * exec_price
             commission = max(20.0, round(trade_value * _COMMISSION_RATE, 2))

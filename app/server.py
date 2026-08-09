@@ -24,10 +24,16 @@ from app.scheduler import start_periodic_scheduler
 from app.market_hours import is_market_open, get_seconds_until_next_market_open
 from app.watch_scheduler import get_watch_scheduler
 from app.auto_trader import AutoTraderEngine, get_universe_status_cache, get_auto_trader_status
+from app.news_listener import NewsEventListener, get_recent_news_events, get_listener_status, clear_recent_news_events, get_queue_status
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Taiwan Stock Agent GUI", version="3.0.0")
+app = FastAPI(title="Taiwan Stock Agent GUI", version="4.0.0")
+
+_PAPER_TRADING_ENABLED = os.getenv('PAPER_TRADING_ENABLED', 'true').lower() == 'true'
+_REAL_TRADING_ENABLED = os.getenv('REAL_TRADING_ENABLED', 'false').lower() == 'true'
+_TRADING_API_URL = os.getenv('TRADING_API_URL', '')
+_TRADING_API_KEY = os.getenv('TRADING_API_KEY', '')
 
 _WEB_DIR = os.path.join(os.path.dirname(__file__), 'web')
 if os.path.exists(_WEB_DIR):
@@ -36,6 +42,80 @@ if os.path.exists(_WEB_DIR):
 
 class ResetRequest(BaseModel):
     capital: float | None = 1000000.0
+
+
+class TradeToggleRequest(BaseModel):
+    mode: str  # 'paper' or 'real'
+    enabled: bool
+
+
+class StockAnalysisRequest(BaseModel):
+    tickers: list[str]
+    news_context: str | None = None
+
+
+@app.post("/api/trade/toggle")
+async def toggle_trading_mode(req: TradeToggleRequest):
+    '''Toggle between paper and real trading mode.'''
+    if req.mode not in ('paper', 'real'):
+        raise HTTPException(status_code=400, detail="Invalid mode. Use 'paper' or 'real'")
+    
+    if req.mode == 'paper':
+        os.environ['PAPER_TRADING_ENABLED'] = 'true' if req.enabled else 'false'
+        os.environ['REAL_TRADING_ENABLED'] = 'false'
+    else:
+        os.environ['REAL_TRADING_ENABLED'] = 'true' if req.enabled else 'false'
+        os.environ['PAPER_TRADING_ENABLED'] = 'false'
+    
+    return {
+        'message': f"Trading mode updated: {req.mode} trading {'enabled' if req.enabled else 'disabled'}",
+        'paper_trading_enabled': os.getenv('PAPER_TRADING_ENABLED'),
+        'real_trading_enabled': os.getenv('REAL_TRADING_ENABLED')
+    }
+
+
+@app.get("/api/stocks/analyze")
+async def analyze_stocks(tickers: str, news_context: str | None = None):
+    '''Batch analyze multiple stocks in parallel.'''
+    if not tickers:
+        raise HTTPException(status_code=400, detail="Missing 'tickers' query parameter")
+    
+    ticker_list = [t.strip() for t in tickers.split(',') if t.strip()]
+    if not ticker_list:
+        raise HTTPException(status_code=400, detail="No valid tickers provided")
+    
+    try:
+        from agents.team import analyze_multiple_stocks
+        results = await analyze_multiple_stocks(ticker_list, news_context)
+        return {
+            'count': len(results),
+            'results': results
+        }
+    except Exception as e:
+        logger.error(f"Stock analysis error: {e}")
+        raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
+
+
+@app.get("/api/news/queue")
+async def get_news_queue_status():
+    '''Get current news analysis queue status.'''
+    return get_queue_status()
+
+
+@app.get("/api/trading-config")
+async def get_trading_config():
+    '''Get current trading configuration.'''
+    return {
+        'paper_trading_enabled': _PAPER_TRADING_ENABLED,
+        'real_trading_enabled': _REAL_TRADING_ENABLED,
+        'trading_api_url': _TRADING_API_URL if _TRADING_API_URL else '',
+        'max_positions_limit': os.getenv('MAX_POSITIONS_LIMIT'),
+        'max_single_stock_pct': os.getenv('MAX_SINGLE_STOCK_PCT'),
+        'max_single_stock_lots': os.getenv('MAX_SINGLE_STOCK_LOTS'),
+        'max_industry_pct': os.getenv('MAX_INDUSTRY_PCT'),
+        'max_parallel_analysis': os.getenv('MAX_PARALLEL_ANALYSIS'),
+        'analysis_queue_timeout': os.getenv('ANALYSIS_QUEUE_TIMEOUT')
+    }
 
 
 @app.on_event("startup")

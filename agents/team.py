@@ -1,10 +1,11 @@
 # File: agents/team.py
 
-'''CrewAI entry-point for the Taiwan Day Trading stock analysis pipeline.'''
+'''CrewAI entry-point for the Taiwan Day Trading stock analysis pipeline with multi-stock support.'''
 from __future__ import annotations
 import os
 import logging
 import sys
+import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,7 @@ except ImportError:
 logger = logging.getLogger(__name__)
 HERE = Path(__file__).resolve().parent
 _DEFAULT_TICKER = os.getenv('DEFAULT_TICKER', '2330')
+_MAX_PARALLEL = int(os.getenv('MAX_PARALLEL_ANALYSIS', '10'))
 
 
 def _build_tasks(
@@ -142,3 +144,55 @@ def _make_summary(ticker: str, signal: dict[str, Any]) -> str:
     conf = signal.get('confidence', 0.0)
     reason = signal.get('reason', '')
     return f"## {ticker} 交易結論\n- **方向**: {side}\n- **信心度**: {conf:.1%}\n- **原因**: {reason}"
+
+
+async def run_crew_async(ticker: str, news_context: str | None = None) -> dict[str, Any]:
+    '''Run crew analysis asynchronously for a single ticker.'''
+    loop = asyncio.get_event_loop()
+    return await loop.run_in_executor(None, run_crew, ticker)
+
+
+async def analyze_multiple_stocks(tickers: list[str], news_context: str | None = None) -> list[dict[str, Any]]:
+    '''Analyze multiple stocks in parallel with limited concurrency.
+    
+    Args:
+        tickers: List of ticker codes to analyze
+        news_context: Optional news context to include in analysis
+        
+    Returns:
+        List of analysis results with signals for each ticker
+    '''
+    semaphore = asyncio.Semaphore(_MAX_PARALLEL)
+    
+    async def analyze_with_semaphore(ticker: str) -> dict[str, Any]:
+        async with semaphore:
+            try:
+                result = await asyncio.wait_for(
+                    run_crew_async(ticker),
+                    timeout=int(os.getenv('ANALYSIS_QUEUE_TIMEOUT', '300'))
+                )
+                return {
+                    'ticker': ticker,
+                    'signal': result.signal,
+                    'report': result.report,
+                    'summary': result.summary
+                }
+            except asyncio.TimeoutError:
+                logger.warning(f"⏰ [Team] 分析超時：{ticker}")
+                return {
+                    'ticker': ticker,
+                    'signal': {'side': 'HOLD', 'confidence': 0.0, 'reason': 'Analysis timeout'},
+                    'report': 'Timeout',
+                    'summary': f'{ticker} 分析超時'
+                }
+            except Exception as e:
+                logger.error(f"❌ [Team] 分析失敗 {ticker}: {e}")
+                return {
+                    'ticker': ticker,
+                    'signal': {'side': 'HOLD', 'confidence': 0.0, 'reason': f'Error: {e}'},
+                    'report': f'Analysis error: {e}',
+                    'summary': f'{ticker} 分析失敗'
+                }
+    
+    tasks = [analyze_with_semaphore(ticker) for ticker in tickers]
+    return await asyncio.gather(*tasks)

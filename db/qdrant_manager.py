@@ -115,6 +115,83 @@ class QdrantManager(BaseDBClient):
             return {'id': results[0].id, 'payload': results[0].payload}
         return None
 
+    def search_news_by_ticker(self, ticker: str, top_k: int = 10) -> list[dict]:
+        '''Search news related to a specific ticker.'''
+        if not self._client:
+            return []
+        
+        from qdrant_client.http import models as http_model
+        filter_ = http_model.Filter(
+            must=[http_model.FieldCondition(key='ticker', match=http_model.MatchValue(value=ticker))]
+        )
+        
+        results = self._client.search(
+            collection_name=_COLLECTION_NAME,
+            query_vector=[0.0] * _VECTOR_SIZE,
+            limit=top_k,
+            query_filter=filter_,
+            with_payload=True
+        )
+        return [{'id': hit.id, 'score': hit.score, 'payload': hit.payload} for hit in results]
+
+    def search_news_by_industry(self, industry: str, top_k: int = 10) -> list[dict]:
+        '''Search news related to a specific industry.'''
+        if not self._client:
+            return []
+        
+        from qdrant_client.http import models as http_model
+        filter_ = http_model.Filter(
+            must=[http_model.FieldCondition(key='industry', match=http_model.MatchValue(value=industry))]
+        )
+        
+        results = self._client.search(
+            collection_name=_COLLECTION_NAME,
+            query_vector=[0.0] * _VECTOR_SIZE,
+            limit=top_k,
+            query_filter=filter_,
+            with_payload=True
+        )
+        return [{'id': hit.id, 'score': hit.score, 'payload': hit.payload} for hit in results]
+
+    def upsert_news_with_metadata(
+        self, 
+        articles: list[dict], 
+        embeddings: Any,
+        include_industry: bool = True
+    ) -> None:
+        '''Upsert news articles with optional industry metadata.'''
+        if not self._client:
+            return
+        
+        # Import industry mapping
+        try:
+            from crawlers.industry_graph import TAG_TO_COMPANIES
+            ticker_to_industry = {}
+            for tag, companies in TAG_TO_COMPANIES.items():
+                for company_info in companies:
+                    if isinstance(company_info, dict):
+                        ticker = company_info.get('code', '')
+                        if ticker:
+                            ticker_to_industry[ticker] = tag
+        except Exception:
+            ticker_to_industry = {}
+
+        points = []
+        for i, article in enumerate(articles):
+            doc_id = article.get('id') or str(uuid.uuid4())
+            payload = {k: v for k, v in article.items() if k != 'id'}
+            
+            # Add industry metadata if available
+            if include_industry:
+                ticker = article.get('ticker', '')
+                if ticker:
+                    payload['industry'] = ticker_to_industry.get(ticker, 'Unknown')
+            
+            vec = embeddings[i].tolist() if hasattr(embeddings[i], 'tolist') else list(embeddings[i]) if embeddings else [0.0]*_VECTOR_SIZE
+            points.append(_http_model.PointStruct(id=doc_id, vector=vec, payload=payload))
+        
+        self._client.upsert(collection_name=_COLLECTION_NAME, points=points, wait=True)
+
 
 def get_qdrant_manager() -> QdrantManager:
     global _qdrant_instance
