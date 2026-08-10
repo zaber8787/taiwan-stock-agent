@@ -88,40 +88,56 @@ class PaperTrader:
         
         return industry_value
 
-    def check_industry_concentration(self, ticker: str, proposed_value: float) -> tuple[bool, str]:
+    def check_industry_concentration(self, ticker: str, proposed_value: float) -> tuple[float, str]:
         '''
         Check if adding this stock would exceed industry concentration limit.
-        Returns (is_allowed, reason_message)
+        Returns (allowed_value, status_message)
+        - If within limits: returns (proposed_value, "OK")
+        - If exceeds limits: returns (adjusted_value, "Adjusted to X% limit")
         '''
         industry = self.get_stock_industry(ticker)
         if not industry:
-            return True, "No industry classification"
+            return proposed_value, "No industry classification"
         
         current_industry_value = self.get_industry_holdings_value(ticker)
         proposed_total = current_industry_value + proposed_value
         proposed_pct = proposed_total / self.initial_capital if self.initial_capital > 0 else 0
         
         if proposed_pct > _MAX_INDUSTRY_PCT:
-            return False, f"Industry {industry} would exceed {_MAX_INDUSTRY_PCT*100:.0f}% limit ({proposed_pct*100:.1f}%)"
+            max_total_by_industry = self.initial_capital * _MAX_INDUSTRY_PCT
+            adjusted_value = max(0, max_total_by_industry - current_industry_value)
+            return adjusted_value, f"Industry {industry} adjusted to {_MAX_INDUSTRY_PCT*100:.0f}% limit"
         
-        return True, f"Industry {industry} concentration OK ({proposed_pct*100:.1f}%)"
+        return proposed_value, f"Industry {industry} concentration OK ({proposed_pct*100:.1f}%)"
 
-    def check_single_stock_limit(self, ticker: str, proposed_shares: int, price: float) -> tuple[bool, str]:
+    def check_single_stock_limit(self, ticker: str, proposed_shares: int, price: float) -> tuple[int, str]:
         '''
         Check if proposed position exceeds single stock limits.
-        Returns (is_allowed, reason_message)
+        Returns (allowed_shares, status_message)
+        - If within limits: returns (proposed_shares, "OK")
+        - If exceeds limits: returns (adjusted_shares, "Adjusted to X lots")
         '''
         proposed_value = proposed_shares * price
         proposed_pct = proposed_value / self.initial_capital if self.initial_capital > 0 else 0
         proposed_lots = proposed_shares // 1000
         
+        # Limit by max lots
         if proposed_lots > _MAX_SINGLE_STOCK_LOTS:
-            return False, f"Exceeds max {_MAX_SINGLE_STOCK_LOTS} lots limit ({proposed_lots} lots)"
+            adjusted_lots = _MAX_SINGLE_STOCK_LOTS
+            adjusted_shares = adjusted_lots * 1000
+            return adjusted_shares, f"Adjusted to max {_MAX_SINGLE_STOCK_LOTS} lots ({adjusted_shares} shares)"
         
-        if proposed_pct > _MAX_SINGLE_STOCK_PCT:
-            return False, f"Exceeds {_MAX_SINGLE_STOCK_PCT*100:.0f}% single stock limit ({proposed_pct*100:.1f}%)"
+        # Limit by percentage of capital
+        max_value_by_pct = self.initial_capital * _MAX_SINGLE_STOCK_PCT
+        if proposed_value > max_value_by_pct:
+            max_shares_by_pct = int(max_value_by_pct / price / 1000) * 1000
+            # Ensure we also respect the lots limit
+            max_lots_by_pct = max_shares_by_pct // 1000
+            final_lots = min(max_lots_by_pct, _MAX_SINGLE_STOCK_LOTS)
+            adjusted_shares = final_lots * 1000
+            return adjusted_shares, f"Adjusted to {_MAX_SINGLE_STOCK_PCT*100:.0f}% capital limit ({adjusted_shares} shares)"
         
-        return True, f"Single stock limit OK ({proposed_lots} lots, {proposed_pct*100:.1f}%)"
+        return proposed_shares, f"Within limits ({proposed_lots} lots, {proposed_pct*100:.1f}%)"
 
     def _load_state(self) -> None:
         self.state = {
@@ -343,18 +359,20 @@ class PaperTrader:
                     'reason': f"Insufficient cash (available ${self.state['cash']:,.2f}, budget ${alloc['budget']:,.2f}) to buy 1 lot of {ticker} at ${exec_price}"
                 }
 
-            # Check single stock limits
-            allowed, msg = self.check_single_stock_limit(ticker, shares, current_price)
-            if not allowed:
-                logger.warning(f"⛔ [PaperTrader] {ticker} 違反單檔限制：{msg}")
-                return {'status': 'REJECTED', 'reason': msg}
-
-            # Check industry concentration
+            # Check single stock limits (auto-adjust if exceeds)
+            adjusted_shares, limit_msg = self.check_single_stock_limit(ticker, shares, current_price)
+            if adjusted_shares != shares:
+                logger.info(f"📊 [PaperTrader] {ticker} 調整購買張數：{shares} → {adjusted_shares} ({limit_msg})")
+                shares = adjusted_shares
+            
+            # Check industry concentration (auto-adjust if exceeds)
             proposed_value = shares * current_price
-            allowed, msg = self.check_industry_concentration(ticker, proposed_value)
-            if not allowed:
-                logger.warning(f"⛔ [PaperTrader] {ticker} 違反產業集中度限制：{msg}")
-                return {'status': 'REJECTED', 'reason': msg}
+            adjusted_value, industry_msg = self.check_industry_concentration(ticker, proposed_value)
+            if adjusted_value < proposed_value:
+                adjusted_shares_for_industry = int(adjusted_value / current_price / 1000) * 1000
+                if adjusted_shares_for_industry < shares:
+                    logger.info(f"📊 [PaperTrader] {ticker} 因產業集中度調整：{shares} → {adjusted_shares_for_industry} 張 ({industry_msg})")
+                    shares = adjusted_shares_for_industry
 
             trade_value = shares * exec_price
             commission = max(20.0, round(trade_value * _COMMISSION_RATE, 2))
