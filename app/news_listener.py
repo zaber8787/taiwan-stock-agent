@@ -22,6 +22,7 @@ from crawlers.ptt_stock_crawler import crawl_ptt_stock_board
 from crawlers.stock_scanner import get_stock_scanner
 from crawlers.industry_graph import TAG_TO_COMPANIES
 from db.paper_trader import get_paper_trader
+from app.market_hours import is_market_open, get_market_status
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +186,20 @@ class NewsEventListener:
         
         return matched[:5]  # Limit to top 5 stocks per news
 
+    async def _get_current_price(self, ticker: str) -> float:
+        '''Get current stock price from yfinance.'''
+        try:
+            import yfinance as yf
+            stock = yf.Ticker(f"{ticker}.TW")
+            hist = stock.history(period='1d')
+            if not hist.empty:
+                price = float(hist['Close'].iloc[-1])
+                logger.debug(f"📊 [NewsListener] {ticker} 當前股價：${price:.2f} (from yfinance)")
+                return price
+        except Exception as e:
+            logger.debug(f"⚠️ [NewsListener] yfinance 抓取 {ticker} 失敗：{e}")
+        return 0.0
+
     async def _process_news_task(self, task: AnalysisTask) -> dict[str, Any] | None:
         '''Process a single news analysis task with timeout handling.'''
         try:
@@ -199,7 +214,7 @@ class NewsEventListener:
             task.status = 'COMPLETED'
             task.result = signal
         except asyncio.TimeoutError:
-            logger.warning(f"⏰ [NewsListener] 分析超時：{task.ticker}")
+            logger.info(f"⏰ [NewsListener] 分析超時：{task.ticker}")
             task.status = 'TIMEOUT'
             task.error = 'Analysis timeout'
             signal = {
@@ -209,7 +224,7 @@ class NewsEventListener:
                 'reason': 'Analysis timeout'
             }
         except Exception as e:
-            logger.error(f"❌ [NewsListener] 分析失敗 {task.ticker}: {e}")
+            logger.warning(f"⚠️ [NewsListener] 分析失敗 {task.ticker}: {e}")
             task.status = 'ERROR'
             task.error = str(e)
             signal = {
@@ -219,21 +234,40 @@ class NewsEventListener:
                 'reason': f'Analysis error: {e}'
             }
 
-        # Execute trade if confidence is high enough
+        # Execute trade if confidence is high enough and market is open
         trade_status = "SKIPPED"
         trade_action = signal.get('side', 'HOLD')
         
         if signal.get('confidence', 0) >= _MIN_CONFIDENCE_FOR_AUTO_TRADE and signal.get('side') in ('BUY', 'SELL'):
+            # Get current price from yfinance
+            current_price = await self._get_current_price(task.ticker)
+            if current_price <= 0:
+                logger.warning(f"❌ [NewsListener] 無法獲取 {task.ticker} 股價，跳過交易")
+                return None
+            
+            # Check if market is open
+            if not is_market_open():
+                logger.info(f"⏰ [NewsListener] 市場未開盤，跳過 {task.ticker} 交易")
+                return None
+            
             # Check industry limit before buying
             if signal.get('side') == 'BUY':
                 estimated_value = self.pt.state['cash'] * float(os.getenv('MAX_SINGLE_STOCK_PCT', '0.20'))
                 if not self.check_industry_limit(task.ticker, estimated_value):
-                    logger.warning(f"🚫 [NewsListener] 產業集中度限制：{task.ticker}")
+                    logger.info(f"📊 [NewsListener] 產業集中度檢查，跳過 {task.ticker}")
                     return None
             
-            exec_res = self.pt.execute_signal(signal, current_price=0.0)
+            exec_res = self.pt.execute_signal(signal, current_price=current_price)
             trade_status = exec_res.get('status', 'EXECUTED')
             trade_action = exec_res.get('action', signal.get('side'))
+            
+            # Only log warnings for actual errors, info for normal skips
+            if trade_status == 'SKIPPED':
+                logger.info(f"⏭️ [NewsListener] {task.ticker} 下單跳過：{exec_res.get('reason', 'N/A')}")
+            elif trade_status == 'REJECTED':
+                logger.info(f"⚠️ [NewsListener] {task.ticker} 下單被拒絕：{exec_res.get('reason', 'N/A')}")
+            elif trade_status == 'EXECUTED':
+                logger.info(f"✅ [NewsListener] {task.ticker} 下單成功：{trade_action} {exec_res.get('shares', 0)} 股 @ ${exec_res.get('price', 0):.2f}")
 
         event_record = {
             'event_id': task.task_id,
@@ -273,7 +307,7 @@ class NewsEventListener:
             try:
                 await self.poll_once()
             except Exception as e:
-                logger.warning(f"NewsListener poll loop error: {e}")
+                logger.info(f"⚙️ [NewsListener] 新聞輪詢錯誤：{e}")
             await asyncio.sleep(self.poll_interval)
 
     def get_queue_status(self) -> dict[str, Any]:

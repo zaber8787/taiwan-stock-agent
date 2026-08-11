@@ -16,7 +16,7 @@ import logging
 from datetime import datetime, date, timedelta
 from typing import Any
 
-from app.market_hours import is_market_open
+from app.market_hours import is_market_open, is_call_auction_time, get_market_status
 
 try:
     from dotenv import load_dotenv
@@ -332,7 +332,7 @@ class PaperTrader:
                     current_price = float(hist['Close'].iloc[-1])
                     logger.info(f"📊 [PaperTrader] 自動抓取 {ticker} 當前股價：${current_price:.2f} (from yfinance)")
             except Exception as e:
-                logger.warning(f"⚠️ [PaperTrader] yfinance 抓取失敗: {e}")
+                logger.debug(f"📊 [PaperTrader] yfinance 抓取失敗: {e}")
                 current_price = 0
         
         if not ticker or current_price <= 0:
@@ -343,20 +343,18 @@ class PaperTrader:
             
             # Check positions limit
             if ticker not in current_holdings and len(current_holdings) >= _MAX_POSITIONS_LIMIT:
-                logger.warning(f"⛔ [PaperTrader] 已達全帳戶持倉上限 ({_MAX_POSITIONS_LIMIT} 檔)，自動拒絕 {ticker} 買進下單。")
-                return {
-                    'status': 'REJECTED',
-                    'reason': f"Max positions limit ({_MAX_POSITIONS_LIMIT} stocks) reached. Current holdings: {list(current_holdings.keys())}"
-                }
+                logger.info(f"⛔ [PaperTrader] 已達持倉上限 ({_MAX_POSITIONS_LIMIT} 檔)，跳過 {ticker} 買進下單。")
+                return {'status': 'SKIPPED', 'reason': f"Max positions limit ({_MAX_POSITIONS_LIMIT} stocks) reached"}
 
             exec_price = round(current_price * (1 + _SLIPPAGE_PCT), 2)
             alloc = self.calculate_allocation(ticker, current_price, confidence)
             shares = alloc['suggested_shares']
 
             if shares < 1000 or not alloc['can_afford']:
+                logger.info(f"💰 [PaperTrader] 現金不足，跳過 {ticker} (預算 ${alloc['budget']:,.2f}, 需要 ${required_cash:,.2f})")
                 return {
-                    'status': 'REJECTED',
-                    'reason': f"Insufficient cash (available ${self.state['cash']:,.2f}, budget ${alloc['budget']:,.2f}) to buy 1 lot of {ticker} at ${exec_price}"
+                    'status': 'SKIPPED',
+                    'reason': f"Insufficient cash (budget ${alloc['budget']:,.2f}, need ${required_cash:,.2f} for 1 lot)"
                 }
 
             # Check single stock limits (auto-adjust if exceeds)
@@ -379,7 +377,8 @@ class PaperTrader:
             total_cost = trade_value + commission
 
             if self.state['cash'] < total_cost:
-                return {'status': 'REJECTED', 'reason': 'Cash balance too low to cover 2-discount commission and slippage'}
+                logger.info(f"💰 [PaperTrader] 現金不足，跳過 {ticker} (現金 ${self.state['cash']:,.2f} < 需要 ${total_cost:,.2f})")
+                return {'status': 'SKIPPED', 'reason': 'Cash balance too low'}
 
             self.state['cash'] -= total_cost
             curr_holding = current_holdings.get(ticker, {'shares': 0, 'cost_price': 0.0, 'buy_date': datetime.now().strftime('%Y-%m-%d'), 'highest_price': exec_price})
@@ -426,7 +425,8 @@ class PaperTrader:
         elif side == 'SELL':
             curr_holding = self.state['holdings'].get(ticker)
             if not curr_holding or curr_holding['shares'] <= 0:
-                return {'status': 'REJECTED', 'reason': f"No holdings for {ticker} to sell"}
+                logger.info(f"📉 [PaperTrader] 無持倉，跳過 {ticker} 賣出下單")
+                return {'status': 'SKIPPED', 'reason': f"No holdings for {ticker}"}
 
             exec_price = round(current_price * (1 - _SLIPPAGE_PCT), 2)
             shares = curr_holding['shares']

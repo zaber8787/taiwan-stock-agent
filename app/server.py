@@ -21,7 +21,7 @@ from crawlers.stock_scanner import get_stock_scanner
 from crawlers.industry_graph import TAG_TO_COMPANIES
 from app.news_listener import NewsEventListener, get_recent_news_events, get_listener_status, clear_recent_news_events
 from app.scheduler import start_periodic_scheduler
-from app.market_hours import is_market_open, get_seconds_until_next_market_open
+from app.market_hours import is_market_open, get_market_status, is_call_auction_time
 from app.watch_scheduler import get_watch_scheduler
 from app.auto_trader import AutoTraderEngine, get_universe_status_cache, get_auto_trader_status
 from app.news_listener import NewsEventListener, get_recent_news_events, get_listener_status, clear_recent_news_events, get_queue_status
@@ -153,13 +153,15 @@ async def get_account_info():
 
 
 @app.get("/api/market-status")
-async def get_market_status():
-    open_flag = is_market_open()
-    next_seconds = get_seconds_until_next_market_open() if not open_flag else 0
+async def get_market_status_info():
+    status = get_market_status()
     return {
-        "is_market_open": open_flag,
-        "seconds_until_next_open": next_seconds,
-        "status_text": "🟢 盤中交易中" if open_flag else f"🌙 非交易時段 (距離開盤 {next_seconds // 3600}小時 {(next_seconds % 3600) // 60}分)"
+        "is_market_open": status['is_open'],
+        "is_call_auction": status.get('is_call_auction', False),
+        "current_time": status['current_time'],
+        "seconds_until_next_open": status.get('seconds_to_open', 0),
+        "seconds_until_close": status.get('seconds_to_close', 0),
+        "status_text": "🟢 盤中交易中" if status['is_open'] else "🌙 非交易時段"
     }
 
 
