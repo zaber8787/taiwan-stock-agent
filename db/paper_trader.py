@@ -351,10 +351,11 @@ class PaperTrader:
             shares = alloc['suggested_shares']
 
             if shares < 1000 or not alloc['can_afford']:
-                logger.info(f"💰 [PaperTrader] 現金不足，跳過 {ticker} (預算 ${alloc['budget']:,.2f}, 需要 ${required_cash:,.2f})")
+                cost_for_one_lot = round(1000 * exec_price * (1 + _COMMISSION_RATE), 2)
+                logger.info(f"💰 [PaperTrader] 現金不足，跳過 {ticker} (預算 ${alloc['budget']:,.2f}, 需要 ${cost_for_one_lot:,.2f})")
                 return {
                     'status': 'SKIPPED',
-                    'reason': f"Insufficient cash (budget ${alloc['budget']:,.2f}, need ${required_cash:,.2f} for 1 lot)"
+                    'reason': f"Insufficient cash (budget ${alloc['budget']:,.2f}, need ${cost_for_one_lot:,.2f} for 1 lot)"
                 }
 
             # Check single stock limits (auto-adjust if exceeds)
