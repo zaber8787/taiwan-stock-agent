@@ -283,6 +283,15 @@ class NewsEventListener:
             'industry': self.get_stock_industry(task.ticker),
             'task_status': task.status
         }
+
+        # Trigger Discord Webhook Notification for significant news events
+        try:
+            from app.notifier import get_discord_notifier
+            notifier = get_discord_notifier()
+            notifier.send_news_notification(event_record)
+        except Exception as e:
+            logger.debug(f"Discord news notify error: {e}")
+
         return event_record
 
     async def _run_ai_analysis(self, ticker: str, title: str, summary: str) -> dict[str, Any]:

@@ -412,6 +412,14 @@ class PaperTrader:
             self.trades.append(trade_record)
             self._save_state()
 
+            # Trigger Discord Webhook Notification
+            try:
+                from app.notifier import get_discord_notifier
+                notifier = get_discord_notifier()
+                notifier.send_trade_notification(trade_record, current_cash=self.state['cash'])
+            except Exception as e:
+                logger.debug(f"Discord trade notify error: {e}")
+
             return {
                 'status': 'EXECUTED',
                 'action': 'BUY',
@@ -443,6 +451,7 @@ class PaperTrader:
             net_revenue = trade_value - commission - stamp_tax
 
             pnl = net_revenue - (cost_price * shares)
+            roi_pct = (pnl / (cost_price * shares) * 100) if (cost_price * shares) > 0 else 0.0
             self.state['cash'] += net_revenue
             self.state['realized_pnl'] += pnl
             del self.state['holdings'][ticker]
@@ -461,11 +470,20 @@ class PaperTrader:
                 'stamp_tax': stamp_tax,
                 'tax_rate_label': '0.15% (當沖降稅)' if is_daytrade else '0.30% (標準證交稅)',
                 'realized_pnl': round(pnl, 2),
+                'roi_pct': round(roi_pct, 2),
                 'reason': reason,
                 'confidence': confidence
             }
             self.trades.append(trade_record)
             self._save_state()
+
+            # Trigger Discord Webhook Notification
+            try:
+                from app.notifier import get_discord_notifier
+                notifier = get_discord_notifier()
+                notifier.send_trade_notification(trade_record, current_cash=self.state['cash'])
+            except Exception as e:
+                logger.debug(f"Discord trade notify error: {e}")
 
             return {
                 'status': 'EXECUTED',
@@ -475,6 +493,7 @@ class PaperTrader:
                 'price': exec_price,
                 'net_revenue': round(net_revenue, 2),
                 'realized_pnl': round(pnl, 2),
+                'roi_pct': round(roi_pct, 2),
                 'trade_id': trade_record['trade_id']
             }
 

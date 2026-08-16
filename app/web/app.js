@@ -130,6 +130,50 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  const discordBadge = document.getElementById('discord-badge');
+  const btnNotifyTest = document.getElementById('btn-notify-test');
+
+  async function loadNotificationStatus() {
+    try {
+      const res = await fetch('/api/notify/status');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (discordBadge) {
+        if (data.configured && data.enabled) {
+          discordBadge.innerHTML = `Discord: <span class="badge-tag online">✅ 已啟用</span>`;
+        } else if (!data.configured) {
+          discordBadge.innerHTML = `Discord: <span class="badge-tag fallback" title="請在 .env 設定 DISCORD_WEBHOOK_URL">⚠️ 未設定</span>`;
+        } else {
+          discordBadge.innerHTML = `Discord: <span class="badge-tag fallback">⏸️ 已暫停</span>`;
+        }
+      }
+    } catch (err) {
+      console.error("Failed to load notify status:", err);
+    }
+  }
+
+  if (btnNotifyTest) {
+    btnNotifyTest.addEventListener('click', async () => {
+      try {
+        btnNotifyTest.disabled = true;
+        btnNotifyTest.textContent = '⏳ 發送中...';
+        const res = await fetch('/api/notify/test', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          alert("🎉 Discord Webhook 測試推播已成功送出！請至 Discord 頻道確認。");
+        } else {
+          alert("⚠️ " + (data.message || "發送失敗，請確認 Webhook URL 配置"));
+        }
+        await loadNotificationStatus();
+      } catch (err) {
+        alert("測試發送時發生異常: " + err);
+      } finally {
+        btnNotifyTest.disabled = false;
+        btnNotifyTest.textContent = '🔔 測試推播';
+      }
+    });
+  }
+
   function updateDbBadge(el, name, dbInfo) {
     if (!el || !dbInfo) return;
     if (dbInfo.connected) {
@@ -320,6 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadWatchlistTimers();
   loadUniverseWatchlist();
   loadListenerStatus();
+  loadNotificationStatus();
   loadNewsFeed();
 
   setInterval(loadWatchlistTimers, 3000);
@@ -328,4 +373,5 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadNewsFeed, 12000);
   setInterval(loadMarketStatus, 30000);
   setInterval(loadListenerStatus, 30000);
+  setInterval(loadNotificationStatus, 30000);
 });

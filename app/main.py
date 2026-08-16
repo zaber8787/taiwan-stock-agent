@@ -50,18 +50,23 @@ def _setup_logging(level=None):
 
 
 def _check_databases_on_startup() -> None:
-    '''Check and display Database connection statuses on console startup.'''
+    '''Check and display Database and Notifier connection statuses on console startup.'''
     mongo_info = check_mongo_status()
     qdrant_info = check_qdrant_status()
 
+    from app.notifier import get_discord_notifier
+    discord_info = get_discord_notifier().get_status()
+
     m_status = "✅ [CONNECTED]" if mongo_info['connected'] else "⚠️ [OFFLINE / LOCAL FALLBACK]"
     q_status = "✅ [CONNECTED]" if qdrant_info['connected'] else "⚠️ [OFFLINE / LOCAL FALLBACK]"
+    d_status = "✅ [ENABLED]" if (discord_info['configured'] and discord_info['enabled']) else ("⚠️ [NOT CONFIGURED / DISABLED]" if not discord_info['configured'] else "⏸️ [PAUSED]")
 
     print("\n" + "=" * 60)
-    print("🔍 資料庫連線狀態檢查 (Database Connection Check on Startup):")
-    print(f"  • MongoDB: {m_status} -> {mongo_info['uri']} (db: {mongo_info['db_name']})")
-    print(f"  • Qdrant:  {q_status} -> {qdrant_info['uri']} (collection: {qdrant_info['collection']})")
-    print("  • 持久化:  ✅ [READY] 本地 JSON 備份檔 (data/paper_account.json)")
+    print("🔍 系統組態與連線檢查 (System Configuration Check on Startup):")
+    print(f"  • MongoDB:  {m_status} -> {mongo_info['uri']} (db: {mongo_info['db_name']})")
+    print(f"  • Qdrant:   {q_status} -> {qdrant_info['uri']} (collection: {qdrant_info['collection']})")
+    print(f"  • Discord:  {d_status} -> {discord_info['webhook_url_masked']}")
+    print("  • 持久化:   ✅ [READY] 本地 JSON 備份檔 (data/paper_account.json)")
     print("=" * 60 + "\n")
 
 

@@ -226,6 +226,37 @@ async def reset_account(req: ResetRequest):
     return {"message": "System fully reset (capital, holdings, trades, watchlists, events)", "account": account}
 
 
+@app.get("/api/notify/status")
+async def get_notification_status():
+    from app.notifier import get_discord_notifier
+    notifier = get_discord_notifier()
+    return notifier.get_status()
+
+
+@app.post("/api/notify/test")
+async def send_test_notification():
+    from app.notifier import get_discord_notifier
+    notifier = get_discord_notifier()
+    notifier.refresh_config()
+    if not notifier.is_configured():
+        return {
+            "success": False,
+            "message": "Discord Webhook 未配置 (請在 .env 設定 DISCORD_WEBHOOK_URL)",
+            "status": notifier.get_status()
+        }
+    
+    success = notifier.send_system_notification(
+        title="🧪 【台股 AI 交易系統】Discord Webhook 測試連線",
+        message="✅ **連線測試成功！**\n本推播頻道已成功與台股 AI 交易助手串接。\n未來重大新聞事件、AI 交易下單與風控告警將即時推播至此頻道。",
+        async_mode=False
+    )
+    return {
+        "success": success,
+        "message": "測試推播已發送" if success else "發送失敗，請檢查 Webhook URL 是否正確",
+        "status": notifier.get_status()
+    }
+
+
 def start_server(host: str = "0.0.0.0", port: int = 8000):
     import uvicorn
     uvicorn.run(app, host=host, port=port)
