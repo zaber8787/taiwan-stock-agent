@@ -9,9 +9,10 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-from agents import decision_maker, news_analyst_agent, price_analyst_agent, researcher_agent
-from agents.models import TradeSignal, TradeSide
+from agents import decision_maker, news_analyst_agent, price_analyst_agent, researcher_agent, risk_manager
+from agents.models import TradeSignal, TradeSide, RiskStatus, RiskAssessment
 from agents.tools.decision_tools import generate_trade_report, FinalPortfolioCheck
+from agents.risk_manager import evaluate_trade_risk
 
 # 新增：導入辯論系統
 try:
@@ -36,7 +37,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 HERE = Path(__file__).resolve().parent
-_DEFAULT_TICKER = os.getenv('DEFAULT_TICKER', '2330')
 _MAX_PARALLEL = int(os.getenv('MAX_PARALLEL_ANALYSIS', '10'))
 
 # 辯論系統配置
@@ -49,7 +49,8 @@ def _build_tasks(
     researcher: Any,
     news_analyst: Any,
     price_analyst: Any,
-    decision_maker: Any
+    decision_maker: Any,
+    risk_manager_agent: Any = None
 ) -> list[Any]:
     if not HAS_CREWAI:
         return []
@@ -71,12 +72,21 @@ def _build_tasks(
         context=[research_task]
     )
     decision_task = Task(
-        description=f'綜合三組分析，裁定 **{ticker}** 買賣建議。',
+        description=f'綜合三組分析與市場籌碼，裁定 **{ticker}** 投資方向 (BUY/SELL/HOLD) 與目標價。',
         expected_output='TradeSignal JSON',
         agent=decision_maker,
         context=[research_task, news_task, price_task]
     )
-    return [research_task, news_task, price_task, decision_task]
+    tasks = [research_task, news_task, price_task, decision_task]
+    if risk_manager_agent:
+        risk_task = Task(
+            description=f'對 **{ticker}** 的投資決策進行獨立風控審查 (大盤20MA、資金與產業集中度上限、停損停利點位)。',
+            expected_output='RiskAssessment 審查說明',
+            agent=risk_manager_agent,
+            context=[decision_task]
+        )
+        tasks.append(risk_task)
+    return tasks
 
 
 def create_crew(ticker: str, process: Any = None) -> Any:
@@ -86,15 +96,17 @@ def create_crew(ticker: str, process: Any = None) -> Any:
     news_analyst = news_analyst_agent.create_news_analyst_agent()
     price_analyst = price_analyst_agent.create_price_analyst_agent()
     decision_agent = decision_maker.create_decision_maker_agent(ticker=ticker)
+    risk_agent = risk_manager.create_risk_manager_agent(ticker=ticker)
     tasks = _build_tasks(
         ticker=ticker,
         researcher=researcher,
         news_analyst=news_analyst,
         price_analyst=price_analyst,
-        decision_maker=decision_agent
+        decision_maker=decision_agent,
+        risk_manager_agent=risk_agent
     )
     return Crew(
-        agents=[researcher, news_analyst, price_analyst, decision_agent],
+        agents=[researcher, news_analyst, price_analyst, decision_agent, risk_agent],
         tasks=tasks,
         process=process or Process.sequential,
         verbose=True,
@@ -112,9 +124,11 @@ class CrewOutput:
 
 
 def run_crew(ticker: str) -> CrewOutput:
-    """運行分析 Crew，可選擇啟用辯論系統"""
+    """運行分析 Crew，整合多空辯論與獨立風控審查"""
     if not HAS_CREWAI:
         signal = decision_maker.synthesize_decision(ticker=ticker)
+        risk_assessment = evaluate_trade_risk(ticker=ticker, signal=signal)
+        signal['risk_assessment'] = risk_assessment.to_dict()
         report = generate_trade_report(signal=signal, analysis='Fallback mode without crewai')
         return CrewOutput(ticker=ticker, signal=signal, report=report, summary=_make_summary(ticker, signal))
 
@@ -178,6 +192,11 @@ def run_crew(ticker: str) -> CrewOutput:
         except Exception as e:
             logger.warning(f"⚠️ [Team] 辯論系統失敗，使用原決策：{e}")
             debate_result = None
+
+    # 🛡️ 獨立風控審查 (Independent Risk Management Check)
+    risk_assessment = evaluate_trade_risk(ticker=ticker, signal=signal)
+    signal['risk_assessment'] = risk_assessment.to_dict()
+    logger.info(f"🛡️ [Team] 風控審查完成：{ticker} -> {risk_assessment.status} ({risk_assessment.adjusted_shares // 1000} 張)")
 
     report = generate_trade_report(signal=signal, analysis='', portfolio=portfolio_output)
     

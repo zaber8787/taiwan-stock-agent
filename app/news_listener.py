@@ -269,6 +269,10 @@ class NewsEventListener:
             elif trade_status == 'EXECUTED':
                 logger.info(f"✅ [NewsListener] {task.ticker} 下單成功：{trade_action} {exec_res.get('shares', 0)} 股 @ ${exec_res.get('price', 0):.2f}")
 
+        # Classify the news event
+        from crawlers.event_classifier import classify_news_event
+        classified = classify_news_event(task.news_title, task.news_summary)
+
         event_record = {
             'event_id': task.task_id,
             'timestamp': task.timestamp.isoformat(),
@@ -281,7 +285,13 @@ class NewsEventListener:
             'trade_action': trade_action,
             'reason': signal.get('reason', ''),
             'industry': self.get_stock_industry(task.ticker),
-            'task_status': task.status
+            'task_status': task.status,
+            'event_category': classified.category.value,
+            'event_category_name': classified.category_name_zh,
+            'urgency': classified.urgency.value,
+            'impact_horizon': classified.impact_horizon.value,
+            'keywords_matched': classified.keywords_matched,
+            'sentiment_hint': classified.sentiment_hint
         }
 
         # Trigger Discord Webhook Notification for significant news events

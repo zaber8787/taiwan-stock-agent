@@ -133,6 +133,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const discordBadge = document.getElementById('discord-badge');
   const btnNotifyTest = document.getElementById('btn-notify-test');
 
+  const regimeBadge = document.getElementById('regime-badge');
+
+  async function loadMarketRegime() {
+    try {
+      const res = await fetch('/api/market/regime');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (regimeBadge) {
+        let tagClass = 'online';
+        if (data.regime === 'BEAR') tagClass = 'offline';
+        else if (data.regime === 'RANGING') tagClass = 'fallback';
+        
+        const allocStr = `${(data.allocation_multiplier * 100).toFixed(0)}%撥款`;
+        regimeBadge.innerHTML = `大盤: <span class="badge-tag ${tagClass}" title="${data.rationale}">${data.regime_name_zh} (${allocStr})</span>`;
+      }
+    } catch (err) {
+      console.error("Failed to load market regime:", err);
+    }
+  }
+
   async function loadNotificationStatus() {
     try {
       const res = await fetch('/api/notify/status');
@@ -205,10 +225,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const isBuy = ev.side === 'BUY';
       const sideBadge = `<span class="${isBuy ? 'badge-buy' : 'badge-sell'}">${ev.side} (${(ev.confidence * 100).toFixed(0)}%)</span>`;
       const timeStr = ev.timestamp ? ev.timestamp.replace('T', ' ').substring(11, 19) : '--';
+      const catName = ev.event_category_name || '📰 一般產經';
+      const catBadge = `<span class="badge-cat">${catName}</span>`;
       return `
         <div class="feed-item">
           <div class="feed-title">
             <span style="color:var(--primary-accent); margin-right:0.5rem;">[${ev.ticker}]</span>
+            ${catBadge}
             ${ev.news_title}
           </div>
           <div class="feed-meta">
@@ -361,6 +384,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAccountData();
   loadTradeLogs();
   loadMarketStatus();
+  loadMarketRegime();
   loadWatchlistTimers();
   loadUniverseWatchlist();
   loadListenerStatus();
@@ -372,6 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadUniverseWatchlist, 10000);
   setInterval(loadNewsFeed, 12000);
   setInterval(loadMarketStatus, 30000);
+  setInterval(loadMarketRegime, 30000);
   setInterval(loadListenerStatus, 30000);
   setInterval(loadNotificationStatus, 30000);
 });

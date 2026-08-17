@@ -112,7 +112,9 @@ async def _collect_concurrently(coros: list[callable]) -> tuple[list, ...]:
 
 
 def _run_crawl(stock_code: str | None = None, date: str | None = None) -> dict[str, Any]:
-    stock_code = stock_code or os.environ.get('STOCK_CODE', '2330.TW')
+    stock_code = stock_code or os.environ.get('STOCK_CODE')
+    if not stock_code:
+        raise ValueError("必須提供股票代碼 (例如: 2454.TW, 2330.TW)")
 
     async def _yf_ohlcv():
         return await fetch_ohlcv_histories_for_tickers([stock_code])
@@ -161,7 +163,9 @@ def run_crawl(stock_code: str | None = None, date: str | None = None) -> None:
 
 
 def run_run_loop(stock_code: str | None = None, date: str | None = None) -> None:
-    stock_code = stock_code or '2330.TW'
+    stock_code = stock_code or os.environ.get('STOCK_CODE')
+    if not stock_code:
+        raise ValueError("必須提供欲分析之股票代碼 (例如: 2454.TW, 2330.TW)")
     clean_ticker = stock_code.replace('.TW', '')
     logger.info(f'[run] 啟動 Agent Loop & Paper Trading  (stock={stock_code})')
     

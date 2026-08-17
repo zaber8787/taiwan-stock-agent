@@ -25,15 +25,20 @@ class FinalPortfolioCheck(BaseTool):
 
 
 def calculate_position_size(
-    capital: float = 1000000.0,
-    ticker: str = "2330",
+    ticker: str,
+    capital: Optional[float] = None,
+    current_price: Optional[float] = None,
     confidence: float = 0.5,
     risk_pct: float = 0.20
 ) -> PositionRecommendation:
     '''Compute recommended share count + all costs for a trade using PaperTrader rules.'''
     from db.paper_trader import get_paper_trader
     pt = get_paper_trader()
-    alloc = pt.calculate_allocation(ticker=ticker, current_price=1000.0, confidence=confidence)
+    price = current_price or pt._get_latest_price(ticker)
+    if price <= 0:
+        raise ValueError(f"無法獲取 {ticker} 之真實價格，拒絕計算部位！")
+
+    alloc = pt.calculate_allocation(ticker=ticker, current_price=price, confidence=confidence)
     shares = alloc['suggested_shares']
     entry_price = alloc['current_price']
     total_cost = shares * entry_price
@@ -80,7 +85,27 @@ def generate_trade_report(
     else:
         lines.append('| 目標價 | — |')
 
-    lines.extend(['', '### 理由', f'> {signal.reason}', ''])
+    # 獨立風控審查結果
+    if signal.risk_assessment:
+        ra = signal.risk_assessment
+        status_val = ra.status.value if hasattr(ra.status, 'value') else ra.status
+        lines.extend([
+            f'| 風控審查 | **{status_val}** |',
+            f'| 建議張數 | {ra.adjusted_shares // 1000} 張 ({ra.adjusted_shares:,} 股) |'
+        ])
+        if ra.stop_loss_price:
+            lines.append(f'| 停損點位 | ${ra.stop_loss_price:,.2f} (-6%) |')
+        if ra.take_profit_price:
+            lines.append(f'| 停利點位 | ${ra.take_profit_price:,.2f} (+10%) |')
+
+    lines.extend(['', '### 💡 決策理由', f'> {signal.reason}', ''])
+
+    if signal.risk_assessment and signal.risk_assessment.risk_rationale:
+        lines.extend([
+            '### 🛡️ 風控審核意見',
+            f'> {signal.risk_assessment.risk_rationale}',
+            ''
+        ])
 
     if portfolio:
         lines.extend([

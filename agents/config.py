@@ -130,7 +130,8 @@ def tools_for_category(cat: str = 'research') -> list[Any]:
             TechnicalAnalysis(),
             SentimentScorer()
         ],
-        'decision': [
+        'decision': [],
+        'risk': [
             FinalPortfolioCheck(),
         ]
     }

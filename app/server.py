@@ -96,6 +96,14 @@ async def analyze_stocks(tickers: str, news_context: str | None = None):
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 
+@app.get("/api/market/regime")
+async def get_market_regime():
+    '''Get current Taiwan stock market regime (Bull/Bear/Ranging).'''
+    from crawlers.market_regime import detect_market_regime
+    state = detect_market_regime()
+    return state.to_dict()
+
+
 @app.get("/api/news/queue")
 async def get_news_queue_status():
     '''Get current news analysis queue status.'''

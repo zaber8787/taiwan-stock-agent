@@ -212,11 +212,20 @@ class DiscordNotifier:
         reason = news_event.get('reason', '')
         trade_status = news_event.get('trade_status', 'SKIPPED')
 
+        category_name = news_event.get('event_category_name', '📰 一般產經')
+        horizon = news_event.get('impact_horizon', 'SHORT_TERM')
+        urgency = news_event.get('urgency', 'MEDIUM')
+        
+        horizon_map = {'INTRADAY': '⚡ 當日當沖', 'SHORT_TERM': '📅 短線 1-3 日', 'LONG_TERM': '📊 中長線結構'}
+        horizon_text = horizon_map.get(horizon, horizon)
+
         side_text = "🟢 看多 (BUY)" if side == 'BUY' else ("🔴 看空 (SELL)" if side == 'SELL' else "⚪ 觀望 (HOLD)")
         color = COLOR_BUY if side == 'BUY' else (COLOR_SELL_LOSS if side == 'SELL' else COLOR_NEWS)
 
         fields = [
             {"name": "關聯台股標的", "value": f"`{ticker}.TW` ({industry})", "inline": True},
+            {"name": "事件分類", "value": f"**{category_name}**", "inline": True},
+            {"name": "預期影響維度", "value": f"`{horizon_text}`", "inline": True},
             {"name": "AI 研判方向", "value": f"**{side_text}**", "inline": True},
             {"name": "AI 信心指數", "value": f"**{confidence * 100:.1f}%**", "inline": True},
             {"name": "自動交易狀態", "value": f"`{trade_status}`", "inline": True}
@@ -228,12 +237,12 @@ class DiscordNotifier:
             fields.append({"name": "AI 研判依據", "value": f"```{reason[:300]}```", "inline": False})
 
         embed = {
-            "title": f"📰 【重大新聞事件監聽】{title[:60]}",
-            "description": f"系統背景即時偵測到與 `{ticker}` 高度相關之財經新聞與社群輿情：",
+            "title": f"📰 【{category_name}】{title[:60]}",
+            "description": f"系統背景即時偵測到與 `{ticker}` 高度相關之重大財經事件（緊急度: `{urgency}`）：",
             "color": color,
             "fields": fields,
             "footer": {
-                "text": "Taiwan Stock Agent • 事件驅動引擎"
+                "text": f"Taiwan Stock Agent • 事件驅動引擎 • {category_name}"
             },
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
