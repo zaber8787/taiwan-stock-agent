@@ -5,7 +5,7 @@
 from __future__ import annotations
 from agents.tools.research_tools import FetchStockPrices, FetchForeignInvestors, CrawlNewsForIndustry, FetchPTTSentiment
 from agents.tools.analyst_tools import VectorSearchNews, CompanyProfileLookup, TechnicalAnalysis, SentimentScorer
-from agents.tools.decision_tools import FinalPortfolioCheck, CalculatePositionSize, GenerateTradeReport
+from agents.tools.decision_tools import FinalPortfolioCheck, calculate_position_size, generate_trade_report
 __all__ = [
     'FetchStockPrices',
     'FetchForeignInvestors',
@@ -16,5 +16,5 @@ __all__ = [
     'TechnicalAnalysis',
     'SentimentScorer',
     'FinalPortfolioCheck',
-    'CalculatePositionSize',
-    'GenerateTradeReport']
+    'calculate_position_size',
+    'generate_trade_report']

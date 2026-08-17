@@ -1,6 +1,6 @@
 # File: agents/team.py
 
-'''CrewAI entry-point for the Taiwan Day Trading stock analysis pipeline with multi-stock support.'''
+'''CrewAI entry-point for the Taiwan Day Trading stock analysis pipeline with multi-stock support and debate system.'''
 from __future__ import annotations
 import os
 import logging
@@ -12,6 +12,14 @@ from typing import Any
 from agents import decision_maker, news_analyst_agent, price_analyst_agent, researcher_agent
 from agents.models import TradeSignal, TradeSide
 from agents.tools.decision_tools import generate_trade_report, FinalPortfolioCheck
+
+# 新增：導入辯論系統
+try:
+    from agents.debate_system import run_debate, DebateResult
+    HAS_DEBATE = True
+except ImportError:
+    HAS_DEBATE = False
+    DebateResult = Any
 
 try:
     from crewai import Agent, Crew, Process, Task
@@ -30,6 +38,10 @@ logger = logging.getLogger(__name__)
 HERE = Path(__file__).resolve().parent
 _DEFAULT_TICKER = os.getenv('DEFAULT_TICKER', '2330')
 _MAX_PARALLEL = int(os.getenv('MAX_PARALLEL_ANALYSIS', '10'))
+
+# 辯論系統配置
+DEBATE_ENABLED = os.getenv('DEBATE_ENABLED', 'true').lower() == 'true'
+DEBATE_MAX_ROUNDS = int(os.getenv('DEBATE_MAX_ROUNDS', '3'))
 
 
 def _build_tasks(
@@ -100,6 +112,7 @@ class CrewOutput:
 
 
 def run_crew(ticker: str) -> CrewOutput:
+    """運行分析 Crew，可選擇啟用辯論系統"""
     if not HAS_CREWAI:
         signal = decision_maker.synthesize_decision(ticker=ticker)
         report = generate_trade_report(signal=signal, analysis='Fallback mode without crewai')
@@ -115,7 +128,63 @@ def run_crew(ticker: str) -> CrewOutput:
     except Exception:
         portfolio_output = '無持倉摘要可用。'
 
+    # 如果啟用辯論系統，運行多空辯論
+    debate_result = None
+    if DEBATE_ENABLED and HAS_DEBATE:
+        try:
+            logger.info(f"🎭 [Team] 啟用多空辯論系統：{ticker}")
+            
+            # 準備辯論所需的資料
+            research_output = ""
+            news_output = ""
+            price_output = ""
+            
+            if result and hasattr(result, 'raw_outputs'):
+                research_output = result.raw_outputs.get('research_task', '')[:1000]
+                news_output = result.raw_outputs.get('news_task', '')[:1000]
+                price_output = result.raw_outputs.get('price_task', '')[:1000]
+            
+            # 獲取籌碼資料
+            from crawlers.chip_analyzer import analyze_chip_microstructure
+            chip_info = analyze_chip_microstructure(ticker.replace('.TW', ''))
+            
+            # 運行辯論
+            from agents.debate_system import run_debate
+            debate_result = run_debate(
+                ticker=ticker,
+                research_data={
+                    'news': news_output,
+                    'technical': price_output,
+                    'chip': chip_info
+                }
+            )
+            
+            logger.info(f"✅ [Team] 辯論完成：{ticker} -> {debate_result.final_decision} (信心度 {debate_result.confidence:.1%})")
+            
+            # 使用辯論結果更新決策
+            signal = {
+                'ticker': ticker,
+                'side': debate_result.final_decision,
+                'confidence': debate_result.confidence,
+                'reason': debate_result.reasoning[:500],
+                'debate_summary': {
+                    'rounds': debate_result.total_rounds,
+                    'quality': debate_result.debate_quality,
+                    'bull_points': debate_result.bull_key_points,
+                    'bear_points': debate_result.bear_key_points
+                }
+            }
+            
+        except Exception as e:
+            logger.warning(f"⚠️ [Team] 辯論系統失敗，使用原決策：{e}")
+            debate_result = None
+
     report = generate_trade_report(signal=signal, analysis='', portfolio=portfolio_output)
+    
+    # 如果有辯論結果，加入辯論摘要到報告
+    if debate_result:
+        report += f"\n\n## 🎭 多空辯論摘要\n- **辯論輪數**: {debate_result.total_rounds} 輪\n- **辯論質量**: {debate_result.debate_quality}\n- **看方要點**: {', '.join(debate_result.bull_key_points[:3])}\n- **空方要點**: {', '.join(debate_result.bear_key_points[:3])}"
+
     return CrewOutput(
         ticker=ticker,
         signal=signal,

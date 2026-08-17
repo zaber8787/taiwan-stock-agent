@@ -101,28 +101,37 @@ except ImportError:
             self.description = description
 
 
-def tools_for_category(cat: str = 'research') -> list[Tool]:
-    '''Return the [RESEARCHER|ANALYST|DECISION] tool group.'''
+def tools_for_category(cat: str = 'research') -> list[Any]:
+    '''Return the [RESEARCHER|ANALYST|DECISION] tool group in CrewAI-compatible format.'''
     from agents.tools.research_tools import CrawlNewsForIndustry, FetchForeignInvestors, FetchPTTSentiment, FetchStockPrices
     from agents.tools.analyst_tools import CompanyProfileLookup, SentimentScorer, TechnicalAnalysis, VectorSearchNews
     from agents.tools.decision_tools import FinalPortfolioCheck, generate_trade_report
-
+    
+    # CrewAI expects BaseTool instances, not custom Tool objects
+    # We'll use the actual tool classes directly
+    if not HAS_CREWAI:
+        return []
+    
+    try:
+        from crewai import Tool as CrewAITool
+    except ImportError:
+        return []
+    
     groups = {
         'research': [
-            Tool(name='FetchStockPrices', func=FetchStockPrices, description='Fetch stock prices'),
-            Tool(name='FetchForeignInvestors', func=FetchForeignInvestors, description='Fetch institutional investors'),
-            Tool(name='CrawlNewsForIndustry', func=CrawlNewsForIndustry, description='Crawl news for industry'),
-            Tool(name='FetchPTTSentiment', func=FetchPTTSentiment, description='Fetch PTT sentiment')
+            FetchStockPrices(),
+            FetchForeignInvestors(),
+            CrawlNewsForIndustry(),
+            FetchPTTSentiment()
         ],
         'analyst': [
-            Tool(name='VectorSearchNews', func=VectorSearchNews, description='Search for similar news in Qdrant embeddings.'),
-            Tool(name='CompanyProfileLookup', func=CompanyProfileLookup, description='Look up a company profile / info by ticker.'),
-            Tool(name='TechnicalAnalysis', func=TechnicalAnalysis, description='Compute RSI, MACD, Bollinger Bands, SMA20/SMA60, etc.'),
-            Tool(name='SentimentScorer', func=SentimentScorer, description='A simple lexicon-based sentiment scorer.')
+            VectorSearchNews(),
+            CompanyProfileLookup(),
+            TechnicalAnalysis(),
+            SentimentScorer()
         ],
         'decision': [
-            Tool(name='FinalPortfolioCheck', func=FinalPortfolioCheck, description='Read the current portfolio holdings, cash, and equity.'),
-            Tool(name='GenerateTradeReport', func=generate_trade_report, description='Assemble a final trade-report markdown.')
+            FinalPortfolioCheck(),
         ]
     }
     return groups.get(cat.lower(), groups['research'])
