@@ -55,20 +55,21 @@ class TechnicalAnalysis(BaseTool):
 
     def execute(self, ticker: str) -> str:
         from crawlers.yfinance_crawler import fetch_ohlcv_histories_for_tickers
-        import asyncio
+        from agents.tools.base import run_async_safely
+        clean_ticker = str(ticker).replace('.TW', '').replace('.TWO', '').strip()
         try:
-            records = asyncio.run(fetch_ohlcv_histories_for_tickers([ticker], period_days=60))
+            records = run_async_safely(fetch_ohlcv_histories_for_tickers([clean_ticker], period_days=60))
             closes = [r['close'] for r in records if r.get('close')]
             if len(closes) < 14:
-                return f"Insufficient price history ({len(closes)} bars) to compute indicators."
+                return f"Insufficient price history ({len(closes)} bars) to compute indicators for {clean_ticker}."
 
             sma20 = sum(closes[-20:]) / min(len(closes), 20)
             sma60 = sum(closes[-60:]) / min(len(closes), 60)
             latest = closes[-1]
             rsi14 = 50.0
-            return f"Technical indicators for {ticker}: Latest Close=${latest:.2f}, SMA20=${sma20:.2f}, SMA60=${sma60:.2f}, RSI14={rsi14:.1f}"
+            return f"Technical indicators for {clean_ticker}: Latest Close=${latest:.2f}, SMA20=${sma20:.2f}, SMA60=${sma60:.2f}, RSI14={rsi14:.1f}"
         except Exception as e:
-            return f"Technical analysis failed for {ticker}: {e}"
+            return f"Technical analysis failed for {clean_ticker}: {e}"
 
     def _run(self, ticker: str) -> str:
         return self.execute(ticker=ticker)

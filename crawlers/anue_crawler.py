@@ -124,3 +124,8 @@ def _parse_anue_news(data: dict, ticker: str) -> list[dict[str, Any]]:
                 'ticker': ticker
             })
     return items
+
+
+async def crawl_anue_for_industry(industry: str, limit: int = 5) -> list[dict[str, Any]]:
+    """Crawl real-time news for an industry sector keyword."""
+    return await crawl_anue_stock_news(ticker=industry)

@@ -1,11 +1,11 @@
 # File: crawlers/yfinance_crawler.py
-
-'''Yahoo Finance crawler for intraday quotes and historical OHLCV data.'''
+"""
+Yahoo Finance crawler for intraday quotes and historical OHLCV data.
+Supports both TWSE (.TW) and TPEx (.TWO) securities.
+"""
 from __future__ import annotations
 import logging
-import random
-import time
-from typing import Any
+from typing import Any, List, Optional
 import requests
 
 try:
@@ -30,8 +30,8 @@ _HEADERS = {
 
 
 async def fetch_yahoo_stock_page(ticker: str) -> dict[str, Any]:
-    '''Fetch live stock quote from Yahoo Finance TW web page.'''
-    clean_code = ticker.replace('.TW', '')
+    """Fetch live stock quote from Yahoo Finance TW web page."""
+    clean_code = ticker.replace('.TW', '').replace('.TWO', '').strip()
     url = f'https://tw.stock.yahoo.com/quote/{clean_code}'
     try:
         if HAS_AIOHTTP:
@@ -40,20 +40,22 @@ async def fetch_yahoo_stock_page(ticker: str) -> dict[str, Any]:
                     if resp.status == 200:
                         text = await resp.text()
                         price = _extract_price_from_html(text)
-                        return {'success': True, 'data': {'ticker': clean_code, 'price': price}}
+                        if price and price > 0:
+                            return {'success': True, 'data': {'ticker': clean_code, 'price': price}}
         else:
             resp = requests.get(url, headers=_HEADERS, timeout=5)
             if resp.status_code == 200:
                 price = _extract_price_from_html(resp.text)
-                return {'success': True, 'data': {'ticker': clean_code, 'price': price}}
+                if price and price > 0:
+                    return {'success': True, 'data': {'ticker': clean_code, 'price': price}}
     except Exception as exc:
         logger.warning(f"Yahoo page fetch error for {clean_code}: {exc}")
 
-    return {'success': True, 'data': {'ticker': clean_code, 'price': 100.0}}
+    return {'success': False, 'data': {'ticker': clean_code, 'price': 0.0}}
 
 
-def _extract_price_from_html(html: str) -> float:
-    '''Regex / string parsing for stock price in Yahoo HTML.'''
+def _extract_price_from_html(html: str) -> Optional[float]:
+    """Regex parsing for stock price in Yahoo HTML."""
     import re
     match = re.search(r'\"Fz\(32px\)[^\"]*\">([\d\.,]+)</span>', html)
     if match:
@@ -61,44 +63,53 @@ def _extract_price_from_html(html: str) -> float:
             return float(match.group(1).replace(',', ''))
         except ValueError:
             pass
-    return 100.0
+    return None
 
 
-async def fetch_ohlcv_histories_for_tickers(tickers: list[str]) -> list[dict[str, Any]]:
-    '''Fetch historical OHLCV data for given tickers.'''
+async def fetch_ohlcv_histories_for_tickers(
+    tickers: List[str],
+    period: str = '5d',
+    period_days: Optional[int] = None
+) -> List[dict[str, Any]]:
+    """
+    Fetch historical OHLCV data for given tickers.
+    Supports period strings ('5d', '1mo', '3mo') or integer period_days.
+    """
+    if period_days:
+        period_str = f"{period_days}d" if period_days <= 90 else "3mo"
+    else:
+        period_str = period
+
     results = []
     for t in tickers:
-        clean = t.replace('.TW', '') + '.TW'
-        try:
-            if HAS_YFINANCE:
-                tk = yf.Ticker(clean)
-                df = tk.history(period='5d')
-                if not df.empty:
-                    last_row = df.iloc[-1]
-                    results.append({
-                        'ticker': clean,
-                        'close': float(last_row['Close']),
-                        'open': float(last_row['Open']),
-                        'high': float(last_row['High']),
-                        'low': float(last_row['Low']),
-                        'volume': int(last_row['Volume'])
-                    })
-                    continue
-        except Exception:
-            pass
+        clean = t.replace('.TW', '').replace('.TWO', '').strip()
+        found = False
+        if HAS_YFINANCE:
+            for suffix in ['.TW', '.TWO']:
+                sym = f"{clean}{suffix}"
+                try:
+                    tk = yf.Ticker(sym)
+                    df = tk.history(period=period_str)
+                    if not df.empty and len(df) > 0:
+                        for idx, row in df.iterrows():
+                            date_str = idx.strftime('%Y-%m-%d') if hasattr(idx, 'strftime') else str(idx)[:10]
+                            results.append({
+                                'ticker': clean,
+                                'date': date_str,
+                                'close': float(row['Close']),
+                                'open': float(row['Open']),
+                                'high': float(row['High']),
+                                'low': float(row['Low']),
+                                'volume': int(row['Volume'])
+                            })
+                        found = True
+                        break
+                except Exception as e:
+                    logger.debug(f"yfinance lookup {sym} failed: {e}")
 
-        # Fallback mock row
-        results.append({
-            'ticker': clean,
-            'close': 100.0,
-            'open': 99.0,
-            'high': 102.0,
-            'low': 98.5,
-            'volume': 15000
-        })
     return results
 
 
-async def crawl_yfinance_prices(ticker: str) -> list[dict[str, Any]]:
-    '''Alias for fetching OHLCV price histories for a single ticker.'''
+async def crawl_yfinance_prices(ticker: str) -> List[dict[str, Any]]:
+    """Alias for fetching OHLCV price histories for a single ticker."""
     return await fetch_ohlcv_histories_for_tickers([ticker])

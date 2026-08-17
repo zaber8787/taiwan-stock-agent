@@ -23,9 +23,10 @@ async def fetch_twse_institutional_investors(date_str: str | None = None) -> lis
     headers = {'User-Agent': CrawlerConfig.user_agent()}
 
     records = []
-    async with aiohttp.ClientSession(headers=headers) as session:
+    connector = aiohttp.TCPConnector(ssl=False)
+    async with aiohttp.ClientSession(headers=headers, connector=connector) as session:
         try:
-            async with session.get(url, timeout=30) as resp:
+            async with session.get(url, timeout=10) as resp:
                 if resp.status == 200:
                     data = await resp.json()
                     if data.get('stat') == 'OK' and 'data' in data:
