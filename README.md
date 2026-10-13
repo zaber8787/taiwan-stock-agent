@@ -10,59 +10,73 @@
 
 ```mermaid
 flowchart TD
-    subgraph 1_Data_Layer ["1. 數據與爬蟲層 (Data Layer)"]
-        TWSE["🏛️ 證交所 API (加權指數 / T86三大法人)"]
-        YF["📈 Yahoo Finance (即時報價 / K線)"]
-        ANUE["📰 鉅亨網 (Anue 財經即時新聞)"]
-        MOPS["📊 公開資訊觀測站 (EPS / 財報)"]
-        PTT["💬 PTT 股票板 (散戶情緒分數)"]
-        CT["🗞️ 工商時報 / 經濟日報 (產業新聞)"]
+    subgraph L1["① 數據與爬蟲層 (Data Layer)"]
+        TWSE["🏛️ 證交所 API<br/>加權指數 / T86 三大法人"]
+        YF["📈 Yahoo Finance<br/>即時報價 / K線"]
+        ANUE["📰 鉅亨網 即時新聞"]
+        CT["🗞️ 工商時報 / 經濟日報"]
+        MOPS["📊 公開資訊觀測站<br/>EPS / 財報"]
+        PTT["💬 PTT 股票板 散戶情緒"]
     end
 
-    subgraph 2_Auto_Core ["2. 全自動掃描與事件監聽核心"]
-        REGIME["🌐 盤勢狀態偵測器 (market_regime.py)\nBULL / BEAR / RANGING 決定撥款與停損參數"]
-        SCANNER["🔍 科技股/ETF 掃描器 (stock_scanner.py)\n自動清查 28 檔標的並補齊缺檔資料"]
-        LISTENER["📡 背景新聞監聽器 (news_listener.py)\n每 3 分鐘輪詢新聞與關鍵字比對"]
-        CLASSIFIER["🏷️ 事件分類器 (event_classifier.py)\n財報/併購/供應鏈/總經等 7 類事件歸類"]
-        SCHEDULER["⏰ 排程觀察器 (watch_scheduler.py)\n管理 WATCH 標的與開收盤狀態判定"]
+    subgraph L2["② 全自動掃描與事件監聽核心"]
+        SCANNER["🔍 標的掃描器 stock_scanner.py<br/>28 檔科技股 / ETF 自動建檔"]
+        LISTENER["📡 新聞監聽器 news_listener.py<br/>每 3 分鐘輪詢"]
+        CLASSIFIER["🏷️ 事件分類器 event_classifier.py<br/>財報 / 併購 / 供應鏈 / 總經 等 7 類"]
+        REGIME["🌐 盤勢偵測器 market_regime.py<br/>BULL / BEAR / RANGING<br/>決定撥款上限與停損參數"]
+        WASHER["🌊 盤中洗價守護 realtime_washer.py<br/>Tick 級 -6% 停損 / +10% 移動停利"]
     end
 
-    subgraph 3_Agent_Chain ["3. CrewAI Agent 協作研判鏈 + 多空辯論"]
-        RESEARCHER["🕵️‍♂️ Researcher (台股研究員)\n搜集個股 K線/法人/新聞/PTT情緒"]
-        NEWS_ANALYST["📰 NewsAnalyst (新聞分析師)\n分析新聞利多利空 + Qdrant 語意檢索"]
-        PRICE_ANALYST["📈 PriceAnalyst (技術分析師)\n計算 RSI / MACD / 布林通道 / 均線"]
-        DEBATE["⚖️ 多空辯論系統 (debate_system.py)\nBull vs Bear → Moderator → Judge 覆核決策"]
-        DECISION_MAKER["🎯 DecisionMaker (決策主管)\n綜合研判產出 TradeSignal (BUY/SELL/HOLD)"]
+    subgraph L3["③ CrewAI 協作研判鏈 + 多空辯論"]
+        RESEARCHER["🕵️ Researcher 台股研究員"]
+        NEWS_ANALYST["📰 NewsAnalyst 新聞分析師"]
+        PRICE_ANALYST["📈 PriceAnalyst 技術分析師"]
+        DEBATE["⚖️ Debate 多空辯論系統<br/>Bull vs Bear → Moderator → Judge"]
+        DECISION["🎯 DecisionMaker 決策主管<br/>BUY / SELL / HOLD"]
     end
 
-    subgraph 4_Paper_Trading ["4. 動態風控與模擬盤交易引擎 (Paper Trader Engine)"]
-        CASH_CHECK["💰 剩餘現金檢查 (Available Cash Check)"]
-        BUDGET_CALC["🛡️ 動態撥款算額:\n預算 = 現金 × 上限% × AI信心度 × 盤勢係數"]
-        AFFORD_CHECK["⛔ 現金充裕性驗證 (不足 1 張自動退單)"]
-        WASHER["🌊 盤中洗價守護 (realtime_washer.py)\nTick 級 -6% 停損 / +10% 移動停利 / 漲停鎖死標記"]
-        RISK_RULES["⚡ 出場規則:\n-6% 剛性停損 / +10% 移動停利 / T+4 時間出場"]
-        EXECUTION["⚡ 扣除手續費 (0.0285%) 與證交稅 (0.15%~0.30%)\n更新持倉、現金與未/已實現損益"]
+    subgraph L4["④ 動態風控與模擬盤交易引擎"]
+        RISK["🛡️ 風控閘門 risk_manager.py<br/>預算 = 現金 × 撥款% × 信心度 × 盤勢係數<br/>產業集中度 / 現金充裕性攔截"]
+        TRADER["⚙️ 撮合引擎 paper_trader.py<br/>手續費 0.0285% + 證交稅 0.15~0.30% + 滑價 0.5%"]
     end
 
-    subgraph 5_Notification ["5. 即時通知與展示層 (Presentation & Push)"]
-        DISCORD["🔔 Discord Webhook 推播器 (notifier.py)\n發送買賣成交 / 新聞 / 風控告警 Rich Embeds"]
-        SERVER["🌐 FastAPI 伺服器 (app/server.py)"]
-        GUI["🖥️ 暗黑擬物風格 Web GUI (http://127.0.0.1:8000)\n包含: 資產卡片, 新聞牆, 撥款預覽, 持倉表, 報告Drawer"]
+    subgraph L5["⑤ 儲存、通知與展示層"]
+        MONGO[("🗄️ MongoDB<br/>companies / prices / portfolio")]
+        QDRANT[("⚡ Qdrant<br/>news_vectors 768 維")]
+        DISCORD["🔔 Discord Webhook 推播<br/>成交 / 新聞 / 風控告警 Rich Embeds"]
+        GUI["🖥️ FastAPI + 暗黑擬物 Web GUI<br/>資產卡 / 新聞牆 / 巡檢表 / 報告 Drawer"]
     end
 
-    TWSE & YF & ANUE & MOPS & PTT & CT --> SCANNER & LISTENER
+    TWSE --> SCANNER
     TWSE --> REGIME
-    SCANNER -->|自動建檔| MONGO[🗄️ MongoDB (companies/prices/portfolio)]
+    YF --> SCANNER
+    MOPS --> SCANNER
+    ANUE --> LISTENER
+    CT --> LISTENER
+    PTT --> LISTENER
+
+    SCANNER -->|自動建檔| MONGO
     LISTENER --> CLASSIFIER
-    LISTENER -->|向量寫入| QDRANT[⚡ Qdrant (news_vectors 768維)]
-    CLASSIFIER -->|重大事件| RESEARCHER
-    REGIME --> BUDGET_CALC
-    RESEARCHER --> NEWS_ANALYST --> PRICE_ANALYST --> DEBATE --> DECISION_MAKER
-    DECISION_MAKER --> CASH_CHECK --> BUDGET_CALC --> AFFORD_CHECK --> EXECUTION
-    EXECUTION --> WASHER --> RISK_RULES
-    RISK_RULES --> DISCORD
-    EXECUTION --> SERVER --> GUI
+    LISTENER -->|新聞語意寫入| QDRANT
+
+    CLASSIFIER -->|重大事件驅動| RESEARCHER
+    RESEARCHER -->|語意檢索| QDRANT
+    RESEARCHER --> NEWS_ANALYST
+    NEWS_ANALYST --> PRICE_ANALYST
+    PRICE_ANALYST --> DEBATE
+    DEBATE --> DECISION
+
+    DECISION --> RISK
+    REGIME -->|盤勢撥款係數| RISK
+    RISK --> TRADER
+    TRADER <-->|持倉與現金狀態| MONGO
+    TRADER -->|持倉 Tick 監控| WASHER
+    WASHER -->|停損 / 停利強制出場| TRADER
+
+    TRADER -->|成交通知| DISCORD
+    WASHER -->|風控告警| DISCORD
     LISTENER -->|新聞廣播| DISCORD
+    TRADER -->|REST API| GUI
 ```
 
 ---
