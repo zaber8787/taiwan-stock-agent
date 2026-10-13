@@ -4,273 +4,390 @@
     "full_ticker": "2330.TW",
     "name": "台積電",
     "category": "半導體",
-    "current_price": 2370.0,
+    "tags": [
+      "半導體",
+      "晶圓代工",
+      "AI",
+      "CoWoS",
+      "先進封裝",
+      "權值股"
+    ],
+    "current_price": 2375.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "85.54",
     "market_cap": "N/A",
-    "summary": "台積電 (2330) — 產業類別: 半導體。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:26.006408",
-    "updated_at": "2026-08-03T22:30:26.006417"
+    "summary": "台積電 (2330) — 產業: 半導體 | 標籤: 半導體, 晶圓代工, AI, CoWoS, 先進封裝, 權值股",
+    "created_at": "2026-08-21T03:52:09.172001",
+    "updated_at": "2026-08-21T03:52:09.172013"
   },
   "2454": {
     "ticker": "2454",
     "full_ticker": "2454.TW",
     "name": "聯發科",
     "category": "半導體IC設計",
-    "current_price": 3910.0,
+    "tags": [
+      "半導體",
+      "IC設計",
+      "AI",
+      "手機晶片"
+    ],
+    "current_price": 3700.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "60.37",
     "market_cap": "N/A",
-    "summary": "聯發科 (2454) — 產業類別: 半導體IC設計。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:27.002833",
-    "updated_at": "2026-08-03T22:30:27.002840"
+    "summary": "聯發科 (2454) — 產業: 半導體IC設計 | 標籤: 半導體, IC設計, AI, 手機晶片",
+    "created_at": "2026-08-21T03:52:11.251809",
+    "updated_at": "2026-08-21T03:52:11.251820"
   },
   "2303": {
     "ticker": "2303",
     "full_ticker": "2303.TW",
     "name": "聯電",
     "category": "半導體晶圓代工",
-    "current_price": 118.0,
+    "tags": [
+      "半導體",
+      "晶圓代工",
+      "成熟製程"
+    ],
+    "current_price": 115.5,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "6.60",
     "market_cap": "N/A",
-    "summary": "聯電 (2303) — 產業類別: 半導體晶圓代工。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:28.017831",
-    "updated_at": "2026-08-03T22:30:28.017838"
+    "summary": "聯電 (2303) — 產業: 半導體晶圓代工 | 標籤: 半導體, 晶圓代工, 成熟製程",
+    "created_at": "2026-08-21T03:52:12.529328",
+    "updated_at": "2026-08-21T03:52:12.529339"
   },
   "3034": {
     "ticker": "3034",
     "full_ticker": "3034.TW",
     "name": "聯詠",
     "category": "半導體IC設計",
-    "current_price": 519.0,
+    "tags": [
+      "半導體",
+      "IC設計",
+      "驅動IC"
+    ],
+    "current_price": 527.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "28.62",
     "market_cap": "N/A",
-    "summary": "聯詠 (3034) — 產業類別: 半導體IC設計。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:29.031930",
-    "updated_at": "2026-08-03T22:30:29.031962"
+    "summary": "聯詠 (3034) — 產業: 半導體IC設計 | 標籤: 半導體, IC設計, 驅動IC",
+    "created_at": "2026-08-21T03:52:13.824070",
+    "updated_at": "2026-08-21T03:52:13.824079"
   },
   "2379": {
     "ticker": "2379",
     "full_ticker": "2379.TW",
     "name": "瑞昱",
     "category": "半導體網通IC",
-    "current_price": 704.0,
+    "tags": [
+      "半導體",
+      "IC設計",
+      "網通IC"
+    ],
+    "current_price": 703.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "27.01",
     "market_cap": "N/A",
-    "summary": "瑞昱 (2379) — 產業類別: 半導體網通IC。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:30.335141",
-    "updated_at": "2026-08-03T22:30:30.335148"
+    "summary": "瑞昱 (2379) — 產業: 半導體網通IC | 標籤: 半導體, IC設計, 網通IC",
+    "created_at": "2026-08-21T03:52:14.998937",
+    "updated_at": "2026-08-21T03:52:14.998948"
   },
   "3443": {
     "ticker": "3443",
     "full_ticker": "3443.TW",
     "name": "創意",
     "category": "IP/ASIC",
-    "current_price": 4185.0,
+    "tags": [
+      "半導體",
+      "IP",
+      "ASIC",
+      "AI"
+    ],
+    "current_price": 5630.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "38.65",
     "market_cap": "N/A",
-    "summary": "創意 (3443) — 產業類別: IP/ASIC。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:31.559469",
-    "updated_at": "2026-08-03T22:30:31.559476"
+    "summary": "創意 (3443) — 產業: IP/ASIC | 標籤: 半導體, IP, ASIC, AI",
+    "created_at": "2026-08-21T03:52:16.290260",
+    "updated_at": "2026-08-21T03:52:16.290269"
   },
   "3661": {
     "ticker": "3661",
     "full_ticker": "3661.TW",
     "name": "世芯-KY",
     "category": "IP/ASIC",
-    "current_price": 3250.0,
+    "tags": [
+      "半導體",
+      "IP",
+      "ASIC",
+      "AI"
+    ],
+    "current_price": 3750.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "67.16",
     "market_cap": "N/A",
-    "summary": "世芯-KY (3661) — 產業類別: IP/ASIC。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:32.634550",
-    "updated_at": "2026-08-03T22:30:32.634563"
+    "summary": "世芯-KY (3661) — 產業: IP/ASIC | 標籤: 半導體, IP, ASIC, AI",
+    "created_at": "2026-08-21T03:52:17.555565",
+    "updated_at": "2026-08-21T03:52:17.555575"
   },
   "2382": {
     "ticker": "2382",
     "full_ticker": "2382.TW",
     "name": "廣達",
     "category": "AI伺服器/電腦",
-    "current_price": 296.5,
+    "tags": [
+      "AI",
+      "AI伺服器",
+      "代工",
+      "筆電",
+      "雲端"
+    ],
+    "current_price": 327.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "22.61",
     "market_cap": "N/A",
-    "summary": "廣達 (2382) — 產業類別: AI伺服器/電腦。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:34.514137",
-    "updated_at": "2026-08-03T22:30:34.514143"
+    "summary": "廣達 (2382) — 產業: AI伺服器/電腦 | 標籤: AI, AI伺服器, 代工, 筆電, 雲端",
+    "created_at": "2026-08-21T03:52:23.070191",
+    "updated_at": "2026-08-21T03:52:23.070204"
   },
   "3231": {
     "ticker": "3231",
     "full_ticker": "3231.TW",
     "name": "緯創",
     "category": "AI伺服器/代工",
-    "current_price": 186.0,
+    "tags": [
+      "AI",
+      "AI伺服器",
+      "代工",
+      "雲端"
+    ],
+    "current_price": 180.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "12.32",
     "market_cap": "N/A",
-    "summary": "緯創 (3231) — 產業類別: AI伺服器/代工。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:35.482325",
-    "updated_at": "2026-08-03T22:30:35.482333"
+    "summary": "緯創 (3231) — 產業: AI伺服器/代工 | 標籤: AI, AI伺服器, 代工, 雲端",
+    "created_at": "2026-08-21T03:52:24.378481",
+    "updated_at": "2026-08-21T03:52:24.378492"
   },
   "2317": {
     "ticker": "2317",
     "full_ticker": "2317.TW",
     "name": "鴻海",
     "category": "組裝代工/電動車",
-    "current_price": 253.0,
+    "tags": [
+      "AI",
+      "AI伺服器",
+      "組裝",
+      "電動車",
+      "蘋果"
+    ],
+    "current_price": 246.5,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "13.94",
     "market_cap": "N/A",
-    "summary": "鴻海 (2317) — 產業類別: 組裝代工/電動車。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:36.512734",
-    "updated_at": "2026-08-03T22:30:36.512741"
+    "summary": "鴻海 (2317) — 產業: 組裝代工/電動車 | 標籤: AI, AI伺服器, 組裝, 電動車, 蘋果",
+    "created_at": "2026-08-21T03:52:25.626531",
+    "updated_at": "2026-08-21T03:52:25.626542"
   },
   "2376": {
     "ticker": "2376",
     "full_ticker": "2376.TW",
     "name": "技嘉",
     "category": "AI伺服器/主機板",
-    "current_price": 324.5,
+    "tags": [
+      "AI",
+      "AI伺服器",
+      "主機板",
+      "電競"
+    ],
+    "current_price": 344.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "20.39",
     "market_cap": "N/A",
-    "summary": "技嘉 (2376) — 產業類別: AI伺服器/主機板。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:37.458326",
-    "updated_at": "2026-08-03T22:30:37.458333"
+    "summary": "技嘉 (2376) — 產業: AI伺服器/主機板 | 標籤: AI, AI伺服器, 主機板, 電競",
+    "created_at": "2026-08-21T03:52:26.919641",
+    "updated_at": "2026-08-21T03:52:26.919652"
   },
   "2356": {
     "ticker": "2356",
     "full_ticker": "2356.TW",
     "name": "英業達",
     "category": "AI伺服器",
-    "current_price": 63.9,
+    "tags": [
+      "AI",
+      "AI伺服器",
+      "代工"
+    ],
+    "current_price": 64.5,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "3.09",
     "market_cap": "N/A",
-    "summary": "英業達 (2356) — 產業類別: AI伺服器。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:38.419073",
-    "updated_at": "2026-08-03T22:30:38.419079"
+    "summary": "英業達 (2356) — 產業: AI伺服器 | 標籤: AI, AI伺服器, 代工",
+    "created_at": "2026-08-21T03:52:28.136244",
+    "updated_at": "2026-08-21T03:52:28.136255"
   },
   "2377": {
     "ticker": "2377",
     "full_ticker": "2377.TW",
     "name": "微星",
     "category": "電競/主機板",
-    "current_price": 143.0,
+    "tags": [
+      "電競",
+      "主機板",
+      "顯示卡"
+    ],
+    "current_price": 140.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "11.44",
     "market_cap": "N/A",
-    "summary": "微星 (2377) — 產業類別: 電競/主機板。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:39.508188",
-    "updated_at": "2026-08-03T22:30:39.508194"
+    "summary": "微星 (2377) — 產業: 電競/主機板 | 標籤: 電競, 主機板, 顯示卡",
+    "created_at": "2026-08-21T03:52:29.384670",
+    "updated_at": "2026-08-21T03:52:29.384703"
   },
   "3008": {
     "ticker": "3008",
     "full_ticker": "3008.TW",
     "name": "大立光",
     "category": "光學鏡頭",
-    "current_price": 3960.0,
+    "tags": [
+      "光學鏡頭",
+      "蘋果",
+      "手機零組件"
+    ],
+    "current_price": 5515.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "188.15",
     "market_cap": "N/A",
-    "summary": "大立光 (3008) — 產業類別: 光學鏡頭。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:40.455443",
-    "updated_at": "2026-08-03T22:30:40.455449"
+    "summary": "大立光 (3008) — 產業: 光學鏡頭 | 標籤: 光學鏡頭, 蘋果, 手機零組件",
+    "created_at": "2026-08-21T03:52:34.872837",
+    "updated_at": "2026-08-21T03:52:34.872847"
   },
   "2308": {
     "ticker": "2308",
     "full_ticker": "2308.TW",
     "name": "台達電",
     "category": "電源/綠能/AI電源",
-    "current_price": 1580.0,
+    "tags": [
+      "電源",
+      "AI電源",
+      "綠能",
+      "電動車"
+    ],
+    "current_price": 1745.0,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "31.42",
     "market_cap": "N/A",
-    "summary": "台達電 (2308) — 產業類別: 電源/綠能/AI電源。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:41.486947",
-    "updated_at": "2026-08-03T22:30:41.486955"
+    "summary": "台達電 (2308) — 產業: 電源/綠能/AI電源 | 標籤: 電源, AI電源, 綠能, 電動車",
+    "created_at": "2026-08-21T03:52:33.570920",
+    "updated_at": "2026-08-21T03:52:33.570930"
   },
   "0050": {
     "ticker": "0050",
     "full_ticker": "0050.TW",
     "name": "元大台灣50",
     "category": "市值型ETF",
-    "current_price": 102.0,
+    "tags": [
+      "ETF",
+      "市值型",
+      "權值股"
+    ],
+    "current_price": 103.8,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "元大台灣50 (0050) — 產業類別: 市值型ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:42.481635",
-    "updated_at": "2026-08-03T22:30:42.481641"
+    "summary": "元大台灣50 (0050) — 產業: 市值型ETF | 標籤: ETF, 市值型, 權值股",
+    "created_at": "2026-08-21T03:52:36.080224",
+    "updated_at": "2026-08-21T03:52:36.080235"
   },
   "0056": {
     "ticker": "0056",
     "full_ticker": "0056.TW",
     "name": "元大高股息",
     "category": "高股息ETF",
-    "current_price": 49.82,
+    "tags": [
+      "ETF",
+      "高股息",
+      "永續"
+    ],
+    "current_price": 52.05,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "元大高股息 (0056) — 產業類別: 高股息ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:43.454923",
-    "updated_at": "2026-08-03T22:30:43.454931"
+    "summary": "元大高股息 (0056) — 產業: 高股息ETF | 標籤: ETF, 高股息, 永續",
+    "created_at": "2026-08-21T03:52:37.342027",
+    "updated_at": "2026-08-21T03:52:37.342039"
   },
   "00878": {
     "ticker": "00878",
     "full_ticker": "00878.TW",
     "name": "國泰永續高股息",
     "category": "高股息ETF",
-    "current_price": 32.57,
+    "tags": [
+      "ETF",
+      "高股息",
+      "永續"
+    ],
+    "current_price": 32.15,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "國泰永續高股息 (00878) — 產業類別: 高股息ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:44.412954",
-    "updated_at": "2026-08-03T22:30:44.412961"
+    "summary": "國泰永續高股息 (00878) — 產業: 高股息ETF | 標籤: ETF, 高股息, 永續",
+    "created_at": "2026-08-21T03:52:38.575185",
+    "updated_at": "2026-08-21T03:52:38.575195"
   },
   "00919": {
     "ticker": "00919",
     "full_ticker": "00919.TW",
     "name": "群益台灣精選高息",
     "category": "高股息ETF",
-    "current_price": 29.45,
+    "tags": [
+      "ETF",
+      "高股息"
+    ],
+    "current_price": 30.31,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "群益台灣精選高息 (00919) — 產業類別: 高股息ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:45.350115",
-    "updated_at": "2026-08-03T22:30:45.350122"
+    "summary": "群益台灣精選高息 (00919) — 產業: 高股息ETF | 標籤: ETF, 高股息",
+    "created_at": "2026-08-21T03:52:39.848810",
+    "updated_at": "2026-08-21T03:52:39.848820"
   },
   "00929": {
     "ticker": "00929",
     "full_ticker": "00929.TW",
     "name": "復華台灣科技優息",
     "category": "科技高股息ETF",
-    "current_price": 27.57,
+    "tags": [
+      "ETF",
+      "高股息",
+      "科技高股息",
+      "半導體"
+    ],
+    "current_price": 28.44,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "復華台灣科技優息 (00929) — 產業類別: 科技高股息ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:46.287886",
-    "updated_at": "2026-08-03T22:30:46.287892"
+    "summary": "復華台灣科技優息 (00929) — 產業: 科技高股息ETF | 標籤: ETF, 高股息, 科技高股息, 半導體",
+    "created_at": "2026-08-21T03:52:41.240752",
+    "updated_at": "2026-08-21T03:52:41.240763"
   },
   "00940": {
     "ticker": "00940",
     "full_ticker": "00940.TW",
     "name": "元大台灣價值高息",
     "category": "高股息ETF",
-    "current_price": 12.12,
+    "tags": [
+      "ETF",
+      "高股息"
+    ],
+    "current_price": 12.4,
     "pe_ratio": "N/A",
-    "eps": "5.20",
+    "eps": "N/A",
     "market_cap": "N/A",
-    "summary": "元大台灣價值高息 (00940) — 產業類別: 高股息ETF。主要個股/ETF 行情資料。",
-    "created_at": "2026-08-03T22:30:47.262227",
-    "updated_at": "2026-08-03T22:30:47.262235"
+    "summary": "元大台灣價值高息 (00940) — 產業: 高股息ETF | 標籤: ETF, 高股息",
+    "created_at": "2026-08-21T03:52:42.533878",
+    "updated_at": "2026-08-21T03:52:42.533889"
   },
   "00918": {
     "ticker": "00918",
@@ -309,13 +426,13 @@
       "半導體",
       "AI"
     ],
-    "current_price": 396.5,
+    "current_price": 517.0,
     "pe_ratio": "N/A",
-    "eps": "N/A",
+    "eps": "28.67",
     "market_cap": "N/A",
     "summary": "南亞科 (2408) — 產業: 記憶體 | 標籤: 記憶體, DRAM, 半導體, AI",
-    "created_at": "2026-08-04T01:31:27.164336",
-    "updated_at": "2026-08-04T01:31:27.164349"
+    "created_at": "2026-08-21T03:52:18.785211",
+    "updated_at": "2026-08-21T03:52:18.785221"
   },
   "2344": {
     "ticker": "2344",
@@ -328,13 +445,13 @@
       "Flash",
       "半導體"
     ],
-    "current_price": 143.0,
+    "current_price": 176.5,
     "pe_ratio": "N/A",
-    "eps": "N/A",
+    "eps": "9.07",
     "market_cap": "N/A",
     "summary": "華邦電 (2344) — 產業: 記憶體 | 標籤: 記憶體, DRAM, Flash, 半導體",
-    "created_at": "2026-08-04T01:31:29.128728",
-    "updated_at": "2026-08-04T01:31:29.128735"
+    "created_at": "2026-08-21T03:52:20.023114",
+    "updated_at": "2026-08-21T03:52:20.023124"
   },
   "8299": {
     "ticker": "8299",
@@ -347,13 +464,13 @@
       "控制晶片",
       "AI"
     ],
-    "current_price": 1760.0,
+    "current_price": 1995.0,
     "pe_ratio": "N/A",
     "eps": "N/A",
     "market_cap": "N/A",
     "summary": "群聯 (8299) — 產業: 記憶體 | 標籤: 記憶體, NAND, 控制晶片, AI",
-    "created_at": "2026-08-04T01:31:29.730786",
-    "updated_at": "2026-08-04T01:31:29.730797"
+    "created_at": "2026-08-21T03:52:21.827084",
+    "updated_at": "2026-08-21T03:52:21.827094"
   },
   "3017": {
     "ticker": "3017",
@@ -366,13 +483,13 @@
       "水冷",
       "電子零組件"
     ],
-    "current_price": 2550.0,
+    "current_price": 2985.0,
     "pe_ratio": "N/A",
-    "eps": "N/A",
+    "eps": "74.28",
     "market_cap": "N/A",
     "summary": "奇鋐 (3017) — 產業: 散熱模組 | 標籤: 散熱, AI伺服器散熱, 水冷, 電子零組件",
-    "created_at": "2026-08-04T01:31:30.458422",
-    "updated_at": "2026-08-04T01:31:30.458432"
+    "created_at": "2026-08-21T03:52:30.619271",
+    "updated_at": "2026-08-21T03:52:30.619280"
   },
   "3324": {
     "ticker": "3324",
@@ -385,12 +502,12 @@
       "水冷",
       "電子零組件"
     ],
-    "current_price": 944.0,
+    "current_price": 993.0,
     "pe_ratio": "N/A",
     "eps": "N/A",
     "market_cap": "N/A",
     "summary": "雙鴻 (3324) — 產業: 散熱模組 | 標籤: 散熱, AI伺服器散熱, 水冷, 電子零組件",
-    "created_at": "2026-08-04T01:31:31.071658",
-    "updated_at": "2026-08-04T01:31:31.071665"
+    "created_at": "2026-08-21T03:52:32.316196",
+    "updated_at": "2026-08-21T03:52:32.316207"
   }
 }
